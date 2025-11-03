@@ -1,2 +1,1 @@
-conosole.log("Hello world")
-
+conosole.log("Hello world Javascript")
