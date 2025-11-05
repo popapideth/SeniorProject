@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Squat Trainer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f6f8fa;
+    }
+
+    .card {
+      box-shadow: 0 2px 8px #3729295a;
+    }
+
+    #live {
+      background: #000000ff;
+    }
+  </style>
+  <script src="/static/complete-sound.js"></script>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Squat Trainer</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="row">
+      <div class="col-md-8">
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="d-flex gap-2 align-items-center mb-3">
+              <div class="reps-me"></div>
+              <input id="reps" type="number" class="form-control" style="width:90px" placeholder="Reps" min="1">
+              <button id="start" class="btn btn-primary" disabled>Start</button>
+              <button id="stop" class="btn btn-danger" disabled>Stop</button>
+              <button id="toggle_trainer" class="btn btn-outline-secondary">Trainer Video</button>
+
+              <div id="countdown" class="ms-3 text-muted fw-bold"></div>
+            </div>
+
+            <div id="preview_area" class="position-relative" style="min-height:520px">
+              <img id="live" src="/video" class="w-100" style="height:520px; object-fit:cover;" />
+            </div>
+
+            <div class="mt-3">
+              <div class="progress" style="height: 25px;">
+                <div id="progress_bar" class="progress-bar" role="progressbar"
+                  style="width:0%; font-size: 14px; font-weight: 500;" data-bs-toggle="tooltip" data-bs-placement="top">
+                  0/0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Trainer</h5>
+            <div id="trainer_alert" class="alert alert-warning d-none">No trainer video found.</div>
+            <video id="trainer_vid" width="100%" controls style="display:none" loop muted
+              src="/static/trainer.mp4"></video>
+            <hr />
+            <h6>Current Squat</h6>
+            <div class="current-squat mb-3">
+              <img id="kf_user" src="/static/placeholder.png" alt="user keyframe"
+                style="width:100%; height:200px; object-fit:cover; border-radius:8px; border:2px solid #eee; margin-bottom:10px;">
+              <div id="sim" class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold">Similarity:</span>
+                <span class="badge bg-primary" style="font-size: 0.9rem;">N/A</span>
+              </div>
+              <div id="squat_depth" class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold">Squat Depth:</span>
+                <span class="badge bg-info" style="font-size: 0.9rem;">N/A</span>
+              </div>
+              <div id="user_keyframe" class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold">Keyframe:</span>
+                <span class="badge bg-secondary" style="font-size: 0.9rem;">N/A</span>
+              </div>
+              <p class="text-center mt-2">Reps done: <span id="rep_count">0</span></p>
+            </div>
+
+            <h6>Previous Squats</h6>
+            <div id="keyframes" class="d-flex flex-wrap gap-3 justify-content-center">
+              <!-- รูป rep ก่อนหน้าจะเพิ่มมาที่นี่ -->
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let polling = true;
+    let lastRoundCount = 0;
+
+    async function checkTrainer() {
+      try {
+        const r = await fetch('/trainer_exists');
+        const j = await r.json();
+        if (!j.exists) {
+          document.getElementById('trainer_alert').classList.remove('d-none');
+        }
+      } catch (e) {
+        document.getElementById('trainer_alert').classList.remove('d-none');
+      }
+    }
+
+
+    async function poll() {
+      try {
+        const r = await fetch('/similarity');
+        const j = await r.json();
+        const s = await fetch('/status');
+        const st = await s.json();
+        console.log(st)
+        const statusJson = await fetch('/static/status.json');
+        const statusData = await statusJson.json();
+        const currentRound = statusData.rounds_count || 0;
+        if (currentRound > lastRoundCount) {
+          completeSound.play().catch(e => console.log('Could not play sound:', e));
+          lastRoundCount = currentRound;
+        }
+
+        if (statusData.keyframes && statusData.keyframes.length > 0) {
+          const lastEntry = statusData.keyframes[statusData.keyframes.length - 1];
+
+          if (lastEntry.user_image) {
+            const mainImg = document.getElementById('kf_user');
+            mainImg.src = lastEntry.user_image;
+          }
+
+          // Update keyframe number
+          const kfSpan = document.getElementById('user_keyframe').querySelector('.badge');
+          kfSpan.innerText = `#${statusData.keyframes.length}`;
+        }
+
+        // Update previous squats
+        const keyframes = document.getElementById('keyframes');
+        keyframes.innerHTML = '<div class="small text-muted mb-2">Previous Squats:</div>';
+
+        // Show all keyframes except the latest one 
+        const previousKeyframes = (statusData.keyframes || []).slice(0, -1).reverse();
+        previousKeyframes.forEach((kf, idx) => {
+          const c = document.createElement('div');
+          c.className = 'text-center';
+          c.style.width = '150px';
+
+          const imgWrap = document.createElement('div');
+          imgWrap.className = 'position-relative';
+
+          const img = document.createElement('img');
+          img.src = kf.user_image || '/static/placeholder.png';
+          img.style.width = '100%';
+          img.style.height = '100px';
+          img.style.objectFit = 'cover';
+          img.style.borderRadius = '8px';
+          img.style.border = '2px solid #eee';
+          imgWrap.appendChild(img);
+
+        });
+
+        // Update progress bar
+        const totalReps = Number(repsInput.value) || 0;
+        const completedReps = statusData.rounds_count || 0;
+        const pct = totalReps > 0 ? Math.round((completedReps / totalReps) * 100) : 0;
+
+        const bar = document.getElementById('progress_bar');
+        bar.style.width = pct + '%';
+        bar.innerText = `${completedReps}/${totalReps} รอบ`;
+
+        // Update progress status
+        if (statusData.keyframes && statusData.keyframes.length > 0) {
+          const lastEntry = statusData.keyframes[statusData.keyframes.length - 1];
+          if (lastEntry.similarity !== null) {
+            updateProgressBarStyle(lastEntry.similarity);
+          }
+        }
+
+        // Update rep count
+        document.getElementById('rep_count').innerText = completedReps;
+      } catch (e) {
+        // ไม่สนใจ polling errors
+      }
+      setTimeout(poll, 1000);
+    }
+
+    // เริ่มเมื่อป้อนตัวเลขที่ถูกต้อง
+    const repsInput = document.getElementById('reps');
+    const startBtn = document.getElementById('start');
+    repsInput.addEventListener('input', () => {
+      const v = Number(repsInput.value);
+      startBtn.disabled = !(v > 0);
+    });
+
+    async function startSession() {
+      const reps = Number(repsInput.value) || 1;
+      document.getElementById('sim').querySelector('.badge').innerText = 'Waiting...';
+      document.getElementById('sim').querySelector('.badge').className = 'badge bg-secondary';
+      document.getElementById('squat_depth').querySelector('.badge').innerText = 'Preparing...';
+      document.getElementById('squat_depth').querySelector('.badge').className = 'badge bg-secondary';
+      document.getElementById('user_keyframe').querySelector('.badge').innerText = '#0';
+      document.getElementById('user_keyframe').querySelector('.badge').className = 'badge bg-secondary';
+      document.getElementById('keyframes').innerHTML = '';
+      document.getElementById('kf_user').src = '/static/[timestamp].png';
+      document.getElementById('rep_count').innerText = '0';
+
+      // countdown 5 วิ ก่อน live
+      let count = 5;
+      document.getElementById('countdown').innerText = 'Starting in ' + count + '...';
+      startBtn.disabled = true;
+      repsInput.disabled = true;
+      const liveImg = document.getElementById('live');
+      while (count > 0) {
+        await new Promise(r => setTimeout(r, 1000));
+        count -= 1;
+        document.getElementById('countdown').innerText = count > 0 ? 'Starting in ' + count + '...' : '';
+      }
+
+      await fetch('/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reps }) });
+      liveImg.style.display = 'block';
+      document.getElementById('preview_area').classList.add('preview-expanded');
+      try {
+        const vid = document.getElementById('trainer_vid');
+        vid.muted = true;
+        vid.loop = true;
+        vid.style.display = sessionStorage.getItem('trainer_enabled') === 'true' ? 'block' : vid.style.display;
+        try { vid.play(); } catch (e) { /* ignore autoplay errors */ }
+      } catch (e) { /* ไม่สนใจ */ }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // all your init code here, then start poll
+      checkTrainer();
+      poll(); // single poll loop
+    });
+
+
+    startBtn.addEventListener('click', () => {
+      startSession();
+      document.getElementById('stop').disabled = false;
+      document.getElementById('start').disabled = true;
+    });
+
+    document.getElementById('stop').addEventListener('click', async () => {
+      try {
+        await fetch('/stop', { method: 'POST' });
+      } catch (e) { /* ignore */ }
+
+      const liveImg = document.getElementById('live');
+      liveImg.style.display = 'none';
+      document.getElementById('preview_area').classList.remove('preview-expanded');
+      try {
+        const vid = document.getElementById('trainer_vid');
+        vid.pause();
+        vid.style.display = 'none';
+      } catch (e) { }
+      document.getElementById('stop').disabled = true;
+      document.getElementById('start').disabled = false;
+      repsInput.disabled = false;
+
+
+      // แสดงสรุปผล
+      try {
+        const r = await fetch('/summary');
+        const j = await r.json();
+        document.getElementById('summary_total').innerText = j.total;
+        document.getElementById('summary_correct').innerText = j.correct;
+        document.getElementById('summary_incorrect').innerText = j.incorrect;
+        document.getElementById('summary_avg').innerText = (j.average_similarity === null ? 'N/A' : j.average_similarity + '%');
+        const modalEl = document.getElementById('summaryModal');
+        const bs = new bootstrap.Modal(modalEl);
+        bs.show();
+      } catch (e) { console.log('summary fetch failed', e); }
+    });
+
+    document.getElementById('toggle_trainer').addEventListener('click', async () => {
+      const r = await fetch('/toggle_trainer', { method: 'POST' });
+      const j = await r.json();
+      const vid = document.getElementById('trainer_vid');
+      if (j.trainer_enabled) {
+        vid.style.display = 'block';
+        sessionStorage.setItem('trainer_enabled', 'true');
+        try { vid.play(); } catch (e) { /* ไม่สนใจ */ }
+      } else {
+        try { vid.pause(); } catch (e) { /* ไม่สนใจ */ }
+        vid.style.display = 'none';
+        sessionStorage.setItem('trainer_enabled', 'false');
+      }
+    });
+
+    document.getElementById('expand_btn').addEventListener('click', () => {
+      const a = document.getElementById('preview_area');
+      a.classList.toggle('preview-expanded');
+      const btn = document.getElementById('expand_btn');
+      btn.innerText = a.classList.contains('preview-expanded') ? 'Contract' : 'Expand';
+    });
+
+    // initial checks
+    checkTrainer();
+    poll();
+  </script>
+  <!-- Summary Modal -->
+  <div class="modal fade" id="summaryModal" tabindex="-1" aria-labelledby="summaryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="summaryModalLabel">Session Summary</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Total reps: <strong id="summary_total">0</strong></p>
+          <p>Correct: <strong id="summary_correct">0</strong></p>
+          <p>Incorrect: <strong id="summary_incorrect">0</strong></p>
+          <p>Average similarity: <strong id="summary_avg">N/A</strong></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </script>
+
+  <script>
+    let lastShownRep = 0;
+
+    async function fetchStatusOnce() {
+      try {
+        const r = await fetch('/status?ts=' + Date.now());
+        if (!r.ok) return;
+        const data = await r.json();
+
+        // Update main keyframe image
+        if (data.latest_keyframe && data.latest_keyframe.user_image) {
+          const img = document.getElementById('kf_user');
+          img.src = data.latest_keyframe.user_image + '?t=' + Date.now();
+        }
+
+        // Update badges
+        const simBadge = document.querySelector('#sim .badge');
+        const depthBadge = document.querySelector('#squat_depth .badge');
+        const keyBadge = document.querySelector('#user_keyframe .badge');
+        if (simBadge) simBadge.innerText = (data.similarity !== undefined ? data.similarity : 'Waiting...');
+        if (depthBadge) depthBadge.innerText = (data.depth || 'N/A');
+        if (keyBadge) keyBadge.innerText = `#${data.keyframes ? data.keyframes.length : 0}`;
+
+        // Update rep count and progress bar
+        const totalReps = Number(document.getElementById('reps').value) || 0;
+        const completedReps = data.done_reps || 0;
+        const pct = totalReps > 0 ? Math.round((completedReps / totalReps) * 100) : 0;
+        const bar = document.getElementById('progress_bar');
+        if (bar) {
+          bar.style.width = pct + '%';
+          bar.innerText = `${completedReps}/${totalReps} รอบ`;
+        }
+        const repCountEl = document.getElementById('rep_count');
+        if (repCountEl) repCountEl.innerText = completedReps;
+
+        // Play complete sound when rounds increased
+        if (data.rounds_count && data.rounds_count > lastRoundCount) {
+          try { if (typeof completeSound !== 'undefined') completeSound.play(); } catch (e) { }
+          lastRoundCount = data.rounds_count;
+        }
+
+        // Update previous keyframes list (prepend new ones)
+        const prevContainer = document.getElementById('keyframes');
+        if (Array.isArray(data.keyframes)) {
+          // We'll show all but the last as "previous", reversed
+          prevContainer.innerHTML = '<div class="small text-muted mb-2">Previous Squats:</div>';
+          const previous = data.keyframes.slice(0, -1).reverse();
+          previous.forEach((kf) => {
+            const card = document.createElement('div');
+            card.className = 'text-center';
+            card.style.width = '120px';
+            card.innerHTML = `
+            <img src="${kf.user_image || '/static/placeholder.png'}?t=${Date.now()}"
+                 style="width:100%; height:100px; object-fit:cover; border-radius:6px; border:2px solid #ddd;">
+            <div class="mt-1">
+              <span class="badge bg-secondary">#${kf.rep_number || ''}</span>
+              <span class="badge bg-primary">${kf.similarity ?? 'N/A'}</span>
+            </div>`;
+            prevContainer.appendChild(card);
+          });
+        }
+
+      } catch (e) {
+        // ignore transient errors
+        console.error("fetchStatusOnce error", e);
+      }
+    }
+
+    // Poll loop (single)
+    setInterval(fetchStatusOnce, 1000);
+
+    // Start button handler
+    document.getElementById('start').addEventListener('click', async () => {
+      const reps = Number(document.getElementById('reps').value) || 1;
+      // disable start
+      document.getElementById('start').disabled = true;
+      document.getElementById('reps').disabled = true;
+      // 5-second countdown
+      let count = 5;
+      const cd = document.getElementById('countdown');
+      cd.innerText = `Starting in ${count}...`;
+      while (count > 0) {
+        await new Promise(r => setTimeout(r, 1000));
+        count -= 1;
+        cd.innerText = count > 0 ? `Starting in ${count}...` : '';
+      }
+      await fetch('/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reps }) });
+      // enable stop
+      document.getElementById('stop').disabled = false;
+      // show trainer video if enabled in sessionStorage
+      const vid = document.getElementById('trainer_vid');
+      if (sessionStorage.getItem('trainer_enabled') === 'true') {
+        vid.style.display = 'block';
+        try { vid.play(); } catch (e) { }
+      }
+    });
+
+
+    document.getElementById('stop').addEventListener('click', async () => {
+      await fetch('/stop', { method: 'POST' });
+      document.getElementById('stop').disabled = true;
+      document.getElementById('start').disabled = false;
+      document.getElementById('reps').disabled = false;
+      try {
+        const r = await fetch('/summary');
+        const j = await r.json();
+        document.getElementById('summary_total').innerText = j.total;
+        document.getElementById('summary_correct').innerText = j.correct;
+        document.getElementById('summary_incorrect').innerText = j.incorrect;
+        document.getElementById('summary_avg').innerText = (j.average_similarity === null ? 'N/A' : j.average_similarity + '%');
+        const modalEl = document.getElementById('summaryModal');
+        const bs = new bootstrap.Modal(modalEl);
+        bs.show();
+      } catch (e) {
+        console.error("Summary fetch failed", e);
+      }
+    });
+
+    document.getElementById('toggle_trainer').addEventListener('click', async () => {
+      const r = await fetch('/toggle_trainer', { method: 'POST' });
+      const j = await r.json();
+      sessionStorage.setItem('trainer_enabled', j.trainer_enabled ? 'true' : 'false');
+      const vid = document.getElementById('trainer_vid');
+      if (j.trainer_enabled) { vid.style.display = 'block'; try { vid.play() } catch (e) { } }
+      else { try { vid.pause() } catch (e) { } vid.style.display = 'none'; }
+    });
+
+    (async () => {
+      try {
+        const r = await fetch('/trainer_exists');
+        const j = await r.json();
+        if (!j.exists) document.getElementById('trainer_alert').classList.remove('d-none');
+      } catch (e) {
+        document.getElementById('trainer_alert').classList.remove('d-none');
+      }
+      fetchStatusOnce();
+    })();
+  </script>
+
+</body>
+</html>

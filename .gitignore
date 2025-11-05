@@ -1,0 +1,6 @@
+.venv
+githelp.txt
+requirements.txt
+
+keyframe_full.csv
+trainer_keyframes.csv
