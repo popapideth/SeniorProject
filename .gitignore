@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-.venv
-githelp.txt
-
-keyframe_full.csv
-=======
 
 venv/
 env/
@@ -12,5 +6,4 @@ env/
 *.env
 index2.html
 keyframes_full.csv
->>>>>>> 009edbb (cordelia 01)
 trainer_keyframes.csv
