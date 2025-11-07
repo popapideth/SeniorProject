@@ -146,7 +146,7 @@ def gen_frames():
         with state['lock']:
             sim = state.get('last_similarity')
             # put text
-        if sim is not None:
+        if sim is not None and session['running'] == True:
             print(f"Current similarity: {sim}%")
         ret, buffer = cv2.imencode('.jpg', frame)
         frame_bytes = buffer.tobytes()
@@ -474,3 +474,5 @@ def get_keyframes():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+
+print(f"user_data['rep']: {user_data['reps']}")
