@@ -255,7 +255,6 @@ def cropEasy(frame, point1, point2=False):
                                                             * h + CONST_PIXEL*ratio_h) <= h else h
         crop_img = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
         # cv2.imwrite("hahaha2.png", crop_img)
-
         return crop_img
 
     x_min = (x1 * w * ratio_w) - (CONST_PIXEL*ratio_w) if (x1 *
