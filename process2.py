@@ -31,7 +31,7 @@ def save_keyframe_image(frame_bgr, role="user"):
     cv2.imwrite(full_path, frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
     return "/" + full_path.replace(os.path.sep, "/")
 
-def append_status_entry(user_image_url=None, similarity=None, rounds_count=None):
+def append_status_entry(user_image_url=None, similarity=None, rounds_count=None, user_vec=None):
     ensure_dir(os.path.dirname(STATUS_JSON))
     status = {"keyframes": [], "rounds_count": 0}
     try:
@@ -44,8 +44,8 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None)
     entry = {
         "timestamp": int(_time.time() * 1000),
         "user_image": user_image_url,
-        "similarity": float(similarity) if similarity is not None else None
-        
+        "similarity": float(similarity) if similarity is not None else None,
+        "user_vec": user_vec  # เพิ่ม user_vec เข้าไปใน entry
     }
     status.setdefault("keyframes", []).append(entry)
     if rounds_count is not None:
@@ -60,9 +60,7 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None)
 
 class ProcessFrame:
     def __init__(self, thresholds, flip_frame = False, similarity_callback=None):
-
         self.st = time.time()
-        
         self.flip_frame = flip_frame
             
         # Define text properties
@@ -135,6 +133,8 @@ class ProcessFrame:
 
             'COMPLETE_STATE': 0,
             'IMPROPER_STATE': 0,
+            
+            'latest_user_vec': None,  # เพิ่มตัวแปรเก็บ vector ล่าสุด
 
             'prev_knee_angle': 0,
 
@@ -226,6 +226,7 @@ class ProcessFrame:
 
         if self.flip_frame:
             frame = cv2.flip(frame, 1)
+        
 
         # Recolor image
         image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -475,13 +476,19 @@ class ProcessFrame:
                         print(f"✅ Keyframe: {self.state_tracker['keyframe']['angles']}")
                         
                         #cosine 127,39,98,32, 
+                        # เก็บค่า trainer vector สำหรับเปรียบเทียบ
                         trainer_vec = np.array([127, 39, 98, 32], dtype=float)
+                        
+                        # สร้าง user vector จากมุมต่างๆ
                         user_vec = np.array([
                             self.state_tracker['keyframe']['angles']['shoulder'],
                             self.state_tracker['keyframe']['angles']['hip'],
                             self.state_tracker['keyframe']['angles']['knee'],
                             self.state_tracker['keyframe']['angles']['ankle']
                         ], dtype=float)
+                        
+                        # เก็บค่า vector ล่าสุดใน state_tracker เพื่อส่งไปยัง frontend
+                        self.state_tracker['latest_user_vec'] = user_vec.tolist()
 
                         # Normalize to 0-1 by dividing by 180 and clipping
                         trainer_normalized = np.clip(trainer_vec / 180.0, 0, 1)
@@ -591,7 +598,14 @@ class ProcessFrame:
                                     sim_val = float(total_similarity)
                                 except Exception:
                                     sim_val = None
-                                append_status_entry(user_image_url=user_img_url, similarity=sim_val, rounds_count=rounds)
+                                # ส่ง user_vec ไปด้วยเมื่อบันทึกลง status.json
+                                user_vec_data = self.state_tracker.get('latest_user_vec')
+                                append_status_entry(
+                                    user_image_url=user_img_url,
+                                    similarity=sim_val,
+                                    rounds_count=rounds,
+                                    user_vec=user_vec_data
+                                )
                         except Exception as _e:
                             # don't break processing for any reason
                             pass
@@ -634,52 +648,6 @@ class ProcessFrame:
                 self.st = time.time()
             pass
 
-        ''' draw_text(
-            frame,
-            "45 Quarter: " + str(self.state_tracker['COUNT_DEPTH'][0]),
-            pos=(int(frame_width*0.05), int(frame_height*0.9)),
-            text_color=(255, 255, 230),
-            font_scale=0.5,
-            font_thickness=1,
-            text_color_bg=self.COLORS['magenta'],
-        )
 
-        draw_text(
-            frame,
-            "60 Half: " + str(self.state_tracker['COUNT_DEPTH'][1]),
-            pos=(int(frame_width*0.28), int(frame_height*0.9)),
-            text_color=(255, 255, 230),
-            font_scale=0.5,
-            font_thickness=1,
-            text_color_bg=self.COLORS['magenta'],
-        )
-
-        draw_text(
-            img=frame,
-            msg="90 Parallel : " + str(self.state_tracker['COUNT_DEPTH'][2]),
-            pos=(int(frame_width*0.45), int(frame_height*0.9)),
-            text_color=(255, 255, 230),
-            font_scale=0.5,
-            font_thickness=1,
-            text_color_bg=self.COLORS['magenta'],
-        )
-        draw_text(
-            frame,
-            "120 Full: " + str(self.state_tracker['COUNT_DEPTH'][3]),
-            pos=(int(frame_width*0.66), int(frame_height*0.9)),
-            text_color=(255, 255, 230),
-            font_scale=0.5,
-            font_thickness=1,
-            text_color_bg=self.COLORS['magenta'],
-        )
-        draw_text(
-            frame,
-            "Improper: " + str(self.state_tracker['COUNT_DEPTH'][4]),
-            pos=(int(frame_width*0.84), int(frame_height*0.9)),
-            text_color=(255, 255, 230),
-            font_scale=0.5,
-            font_thickness=1,
-            text_color_bg=self.COLORS['magenta'],
-        ) '''
 
         return frame
