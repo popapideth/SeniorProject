@@ -1,5 +1,9 @@
-.venv
-githelp.txt
 
-keyframe_full.csv
+venv/
+env/
+.venv/
+.env
+*.env
+index2.html
+keyframes_full.csv
 trainer_keyframes.csv
