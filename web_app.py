@@ -400,10 +400,10 @@ def get_keyframes():
 
         def get_depth_text(depth_value):
             depth_map = {
-                0: "Quarter Squat (45°)",
-                1: "Half Squat (60°)",
-                2: "Parallel Squat (90°)",
-                3: "Full Squat (120°)",
+                0: "Quarter Squat (45)",
+                1: "Half Squat (60)",
+                2: "Parallel Squat (90)",
+                3: "Full Squat (120)",
                 4: "Improper Squat"
             }
             if depth_value is not None and isinstance(depth_value, int):

@@ -445,7 +445,7 @@ class ProcessFrame:
                                     })
 
                                     print(
-                                        f"📝 select frame: {self.state_tracker['selected_frame'][-1]['angles']}")
+                                        f"select frame: {self.state_tracker['selected_frame'][-1]['angles']}")
 
                                     self.state_tracker['selected_frame_count'] += 1
                                     self.state_tracker['stable_pose_time_count'] = 0
@@ -473,7 +473,7 @@ class ProcessFrame:
                             keyframe=self.state_tracker['keyframe'], option=1)
                         
                         
-                        print(f"✅ Keyframe: {self.state_tracker['keyframe']['angles']}")
+                        print(f"Keyframe: {self.state_tracker['keyframe']['angles']}")
                         
                         #cosine 127,39,98,32, 
                         # เก็บค่า trainer vector สำหรับเปรียบเทียบ
