@@ -107,7 +107,7 @@ def _similarity_cb(val):
             'angle': depth,  # เก็บค่าองศาดิบ
             'user_vec': user_vec,
             'timestamp': int(timestamp * 1000),
-            'rep_number': rep_number,
+            'rep_number': rep_number+1,
             'correct': is_correct,
             'incorrect': not is_correct
         }
@@ -292,10 +292,10 @@ def status():
                     break
                     
         depth_map = {
-            0: "Quarter Squat (45°)",
-            1: "Half Squat (60°)",
-            2: "Parallel Squat (90°)",
-            3: "Full Squat (120°)",
+            0: "Quarter Squat (45)",
+            1: "Half Squat (60)",
+            2: "Parallel Squat (90)",
+            3: "Full Squat (120)",
             4: "Improper Squat"
         }
         if current_depth is None:
@@ -312,10 +312,10 @@ def status():
 
         if status_data['keyframes']:
             depth_map = {
-                0: "Quarter Squat (45°)",
-                1: "Half Squat (60°)",
-                2: "Parallel Squat (90°)",
-                3: "Full Squat (120°)",
+                0: "Quarter Squat (45)",
+                1: "Half Squat (60)",
+                2: "Parallel Squat (90)",
+                3: "Full Squat (120)",
                 4: "Improper Squat"
             }
 
@@ -432,7 +432,7 @@ def get_keyframes():
         if os.path.exists(status_path):
             with open(status_path, 'r', encoding='utf-8') as f:
                 status_data = json.load(f)
-
+        
         def get_depth_text(depth_value):
             depth_map = {
                 0: "Quarter Squat (45)",
@@ -519,7 +519,7 @@ def get_depth_from_tracker():
             if is_active:
                 depth = i
                 break
-
+    
     if depth is not None:
         depth_map = {
             0: "Quarter Squat (45°)",
@@ -560,5 +560,3 @@ load_user_data()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
-
-print(f"user_data['rep']: {user_data['reps']}")
