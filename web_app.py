@@ -90,7 +90,7 @@ def _similarity_cb(val):
         # เก็บลง session
         session.setdefault('keyframes', []).append(record)
 
-        # เก็บลง database
+        # เก็บลง database มุมของแต่ละจุด 4 จุด
         user_data["reps"].append(record)
 
         # ถ้าครบ reps แล้วหยุด
