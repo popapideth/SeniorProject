@@ -7,3 +7,7 @@ env/
 index2.html
 keyframes_full.csv
 trainer_keyframes.csv
+_pycache_/
+__pycache__/
+_pycache_
+__pycache__
