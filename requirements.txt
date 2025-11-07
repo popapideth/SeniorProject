@@ -1,16 +1,8 @@
-<<<<<<< HEAD
 numpy==1.26.4
-=======
-numpy>=1.23.5,<2.0.0
->>>>>>> 009edbb (cordelia 01)
 mediapipe==0.10.21
 opencv-contrib-python==4.11.0.86
 opencv-python==4.11.0.86
 pandas>=2.0.3
 screeninfo==0.8.1
-<<<<<<< HEAD
 Flask==3.1.2
-=======
-flask==3.1.2
->>>>>>> 009edbb (cordelia 01)
 scikit-learn==1.7.2
