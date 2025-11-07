@@ -242,10 +242,7 @@ def cropEasy(frame, point1, point2=False):
     ratio_w, ratio_h = scaledTo(w, h)
     CONST_PIXEL = 50
 
-<<<<<<< HEAD
     # cv2.imwrite("hahaha.png", frame)
-=======
->>>>>>> 009edbb (cordelia 01)
 
     x1, y1 = point1  # Mediapipe Normalize
     if point2:
@@ -259,11 +256,7 @@ def cropEasy(frame, point1, point2=False):
         y_max = (max(y1, y2) * h + CONST_PIXEL*ratio_h) if (max(y1, y2)
                                                             * h + CONST_PIXEL*ratio_h) <= h else h
         crop_img = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
-<<<<<<< HEAD
         # cv2.imwrite("hahaha2.png", crop_img)
-=======
-        cv2.imwrite("hahaha2.png", crop_img)
->>>>>>> 009edbb (cordelia 01)
         return crop_img
 
     x_min = (x1 * w * ratio_w) - (CONST_PIXEL*ratio_w) if (x1 *
