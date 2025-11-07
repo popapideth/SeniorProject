@@ -92,6 +92,7 @@ def _similarity_cb(val):
 
         # เก็บลง database
         user_data["reps"].append(record)
+        print(f"user_data['rep']: {user_data['reps']}")
 
         # ถ้าครบ reps แล้วหยุด
         if session['done_reps'] >= session.get('target_reps', 0):
@@ -266,6 +267,7 @@ def status():
         if os.path.exists(status_path):
             with open(status_path, 'r', encoding='utf-8') as f:
                 status_data = json.load(f)
+                # None
 
         current_depth = None
         depth_text = "Preparing..."
@@ -344,6 +346,7 @@ def trainer_exists():
     return jsonify({'exists': os.path.exists(trainer_path)})
 
 
+
 @app.route('/stop', methods=['POST'])
 def stop_session_route():
     # Just stop the session without resetting
@@ -363,7 +366,7 @@ def summary():
     CORRECT_THRESH = 80.0
     correct = sum(1 for s in sims if s >= CORRECT_THRESH)
     incorrect = total - correct
-    
+
     return jsonify({
         'total': total,
         'correct': correct,
