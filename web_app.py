@@ -14,7 +14,9 @@ app = Flask(__name__)
 state = {
     'last_similarity': None,
     'lock': threading.Lock(),
-    'play_sound': False  # เพิ่มสถานะสำหรับการเล่นเสียง
+    'play_sound': False,
+    'last_depth_text': None,
+    'last_depth_value': None
 }
 
 session = {
@@ -45,61 +47,51 @@ def _similarity_cb(val):
         if val is None:
             return
 
-        # รองรับทั้ง dict
         if isinstance(val, dict):
             similarity = float(val.get("similarity", 0))
-            depth = val.get("depth")
-            user_vec = val.get("user_vec")
             rep_number = val.get("rep_number")
             timestamp = val.get("timestamp", time.time())
         else:
             similarity = float(val)
-            depth = get_depth_from_tracker()  # ใช้ฟังก์ชันใหม่ในการดึง depth
-            user_vec = processor.state_tracker.get('latest_user_vec') if hasattr(processor, 'state_tracker') else None
             rep_number = session.get("done_reps", 0) + 1
             timestamp = time.time()
+            
+        if isinstance(val, dict):
+            depth_text = val.get('depth')
+            depth_idx = val.get('depth_value')
+        else:
+            depth_value, depth_text = processor.get_depth(as_text=True)
+            depth_idx = depth_value
 
-        # อัปเดต similarity ล่าสุด
+        if isinstance(depth_text, (list, tuple)):
+            try:
+                depth_text = depth_text[1]
+            except Exception:
+                depth_text = str(depth_text)
+        if isinstance(depth_idx, (list, tuple)):
+            try:
+                depth_idx = depth_idx[0]
+            except Exception:
+                depth_idx = None
+
+        user_vec = (
+            processor.state_tracker.get("latest_user_vec")
+            if hasattr(processor, "state_tracker")
+            else None
+        )
+
         with state['lock']:
             state['last_similarity'] = similarity
 
         if not session.get('running') or session.get('done_reps', 0) >= session.get('target_reps', 0):
             return
+
         session['done_reps'] = rep_number
-
-        # path to status.json (process2 writes entries)
-        status_path = os.path.join('static', 'status.json')
-
-        # สร้าง record สำหรับเก็บค่าทั้งหมด
-        filename = f"frame_{int(time.time() * 1000)}.jpg"
-        
-        if depth is not None and isinstance(depth, (int, float)):
-            if depth < 45: 
-                depth_text = "Quarter Squat (45°)"
-            elif depth < 60:
-                depth_value = 1
-                depth_text = "Half Squat (60°)"
-            elif depth < 90: 
-                depth_value = 2
-                depth_text = "Parallel Squat (90°)"
-            elif depth <= 120:  
-                depth_value = 3
-                depth_text = "Full Squat (120°)"
-            else:  
-                depth_value = 4
-                depth_text = "Improper Squat"
-        else:
-            depth_value = None
-            depth_text = "Unknown"
-
-        # normalize similarity and derive correctness flags
         sim_val = round(float(similarity), 2)
         is_correct = sim_val >= CORRECT_THRESH
 
-        # ปรับค่า depth ให้เป็น 4 ถ้ามากกว่าหรือเท่ากับ 4
-        depth_value = 4 if isinstance(depth, (int, float)) and depth >= 4 else depth
-
         record = {
+<<<<<<< HEAD
             'user_image': f"/static/keyframes/{filename}",  # ใส่ path แบบเต็ม
             'similarity': sim_val,
             'depth': depth_text,  # เก็บประเภทของ squat เป็นข้อความ
@@ -110,9 +102,23 @@ def _similarity_cb(val):
             'rep_number': rep_number+1,
             'correct': is_correct,
             'incorrect': not is_correct
+=======
+            "user_image": f"/static/keyframes/frame_{int(timestamp * 1000)}.jpg",
+            "similarity": sim_val,
+            "depth": depth_text,
+            "depth_value": depth_idx,
+            "user_vec": user_vec,
+            "timestamp": int(timestamp * 1000),
+            "rep_number": rep_number + 1,
+            "isCorrect": bool(is_correct)
+>>>>>>> origin/cordelia
         }
 
+        session.setdefault("keyframes", []).append(record)
+        user_data.setdefault("reps", []).append(record)
+        save_user_data()
 
+<<<<<<< HEAD
         if processor.state_tracker.get('COMPLETE_STATE', 0) == 1:
             state['play_sound'] = True
             try:
@@ -140,11 +146,20 @@ def _similarity_cb(val):
         # เก็บลง database มุมของแต่ละจุด 4 จุด
         user_data["reps"].append(record)
         print(f"user_data['rep']: {user_data['reps']}")
+=======
+        try:
+            with state['lock']:
+                state['last_depth_text'] = depth_text
+                state['last_depth_value'] = depth_idx
+                state['play_sound'] = True
+        except Exception:
+            pass
 
-        # ถ้าครบ reps แล้วหยุด
-        if session['done_reps'] >= session.get('target_reps', 0):
-            session['running'] = False
-            processor.state_tracker['running'] = False
+        if session["done_reps"] >= session.get("target_reps", 0):
+            session["running"] = False
+            processor.state_tracker["running"] = False
+>>>>>>> origin/cordelia
+
     except Exception as e:
         print("Error in similarity callback:", e)
 
@@ -194,63 +209,74 @@ def start_session():
     reps = int(data.get('reps', 0))
     if reps <= 0:
         return jsonify({'error': 'reps must be > 0'}), 400
-    
+
+    # Reset shared state safely
     with state['lock']:
         state['last_similarity'] = None
-    
-    session['target_reps'] = reps
-    session['done_reps'] = 0
-    session['running'] = True
-    session['keyframes'] = []
-    session['trainer_enabled'] = False
-    
-    status = {
-        "keyframes": [],
-        "rounds_count": 0
-    }
-    
+        state['play_sound'] = False
+    session.update({
+        'target_reps': reps,
+        'done_reps': 0,
+        'running': True,
+        'keyframes': [],
+        'trainer_enabled': False
+    })
+
+    # รีเซ็ตไฟล์บันทึก
     try:
-        # รีเซ็ต user_data
         global user_data
         user_data = {"reps": []}
         save_user_data()
 
+        status_path = os.path.join('static', 'status.json')
         keyframes_dir = os.path.join('static', 'keyframes')
+
         os.makedirs(keyframes_dir, exist_ok=True)
-        
-        # Reset status.json
-        with open(os.path.join('static', 'status.json'), 'w') as f:
-            json.dump(status, f)
-            
-        # Clear previous keyframes
-        for file in os.listdir(keyframes_dir):
-            if file.endswith('.jpg') or file.endswith('.png'):
-                try:
-                    os.remove(os.path.join(keyframes_dir, file))
-                except:
-                    pass
+
+        with open(status_path, 'w', encoding='utf-8') as f:
+            json.dump({'keyframes': [], 'rounds_count': 0}, f, indent=2)
+
     except Exception as e:
-        print(f"Error clearing files: {e}")
-    
-    if hasattr(processor, 'state_tracker'):
-        processor.state_tracker['COUNT_DEPTH'] = processor.state_tracker['COUNT_DEPTH'] * 0
-        processor.state_tracker['DISPLAY_DEPTH'] = processor.state_tracker['DISPLAY_DEPTH'] * False
-        processor.state_tracker['rounds_count'] = 0
-        processor.state_tracker['state_seq'] = []
-        processor.state_tracker['selected_frame'] = []
-        processor.state_tracker['selected_frame_count'] = 0
-        processor.state_tracker['COMPLETE_STATE'] = 0
-        processor.state_tracker['IMPROPER_STATE'] = 0
-        processor.state_tracker['prev_knee_angle'] = 0
-        processor.state_tracker['stable_pose_time_count'] = 0
-        processor.state_tracker['POINT_OF_MISTAKE'] = processor.state_tracker['POINT_OF_MISTAKE'] * False
-        
+        print(f"[ERROR] Failed to initialize new session: {e}")
+
+    # รีเซ็ตค่าใน processor อย่างปลอดภัย
+    try:
+        if hasattr(processor, 'state_tracker'):
+            tracker = processor.state_tracker
+
+            for key in [
+                "COUNT_DEPTH", "DISPLAY_DEPTH", "POINT_OF_MISTAKE",
+                "state_seq", "selected_frame", "COMPLETE_STATE",
+                "IMPROPER_STATE", "stable_pose_time_count"
+            ]:
+                if key in tracker:
+                    val = tracker[key]
+                    if isinstance(val, (list, tuple)):
+                        tracker[key] = [0] * len(val)
+                    elif isinstance(val, (int, float, bool)):
+                        tracker[key] = 0
+                    else:
+                        tracker[key] = type(val)()  # reset ด้วย default type()
+
+            tracker["rounds_count"] = 0
+            tracker["selected_frame_count"] = 0
+            tracker["prev_knee_angle"] = 0
+            tracker["running"] = True
+
+            # รีเซ็ตค่าความลึก (depth system ใหม่)
+            tracker["DISPLAY_DEPTH"] = [False] * len(
+                getattr(processor, "DEPTH_MAP", {0: ""})
+            )
+
+    except Exception as e:
+        print(f"[ERROR] Failed to reset processor tracker: {e}")
+
     return jsonify({
-        'ok': True, 
+        'ok': True,
         'target_reps': reps,
         'done_reps': 0,
         'running': True,
-        'keyframes': []
+        'keyframes': [],
     })
 
 @app.route('/toggle_trainer', methods=['POST'])
@@ -268,21 +294,50 @@ def status():
                 status_data = json.load(f)
                 # None
 
-        current_depth = None
-        depth_text = "Preparing..."
+        current_depth_value, current_depth_text = processor.get_depth(as_text=True)
+        current_depth_idx = current_depth_value
+
+        if (current_depth_text is None or current_depth_text == "Unknown" or current_depth_idx is None):
+            with state['lock']:
+                last_dt = state.get('last_depth_text')
+                last_dv = state.get('last_depth_value')
+            if last_dt is not None:
+                current_depth_text = last_dt
+            if last_dv is not None:
+                current_depth_idx = last_dv
+
+        if (current_depth_text is None or current_depth_text == "Unknown"):
+            if status_data.get('keyframes'):
+                last_kf = status_data['keyframes'][-1]
+                if last_kf.get('depth'):
+                    current_depth_text = last_kf.get('depth')
+                elif last_kf.get('depth_text'):
+                    current_depth_text = last_kf.get('depth_text')
+            elif user_data.get('reps'):
+                last_rep = user_data['reps'][-1]
+                if last_rep.get('depth'):
+                    current_depth_text = last_rep.get('depth')
+        if current_depth_idx is None:
+            if status_data.get('keyframes'):
+                last_kf = status_data['keyframes'][-1]
+                if last_kf.get('depth_value') is not None:
+                    current_depth_idx = last_kf.get('depth_value')
+            elif user_data.get('reps'):
+                last_rep = user_data['reps'][-1]
+                if last_rep.get('depth_value') is not None:
+                    current_depth_idx = last_rep.get('depth_value')
+
+        # หา user_vec ล่าสุดด
         user_vec = None
-        
         if status_data.get('keyframes'):
-            latest_kf = status_data['keyframes'][-1]
-            current_depth = latest_kf.get('depth')
-            user_vec = latest_kf.get('user_vec')
-            
-        if user_vec is None and len(user_data.get('reps', [])) > 0:
-            latest_record = user_data['reps'][-1]
-            user_vec = latest_record.get('user_vec')
-            
+            user_vec = status_data['keyframes'][-1].get('user_vec')
+
+        if user_vec is None and user_data.get('reps'):
+            user_vec = user_data['reps'][-1].get('user_vec')
+
         if user_vec is None and hasattr(processor, 'state_tracker'):
             user_vec = processor.state_tracker.get('latest_user_vec')
+<<<<<<< HEAD
         
         if current_depth is None and hasattr(processor, 'state_tracker'):
             display_depth = processor.state_tracker['DISPLAY_DEPTH']
@@ -304,12 +359,16 @@ def status():
             depth_text = depth_map.get(current_depth)
         else:
             depth_text = str(current_depth)
+=======
+>>>>>>> origin/cordelia
 
+        # similarity ล่าสุด
         with state['lock']:
             similarity = state.get('last_similarity')
             if similarity is not None:
                 similarity = round(float(similarity), 2)
 
+<<<<<<< HEAD
         if status_data['keyframes']:
             depth_map = {
                 0: "Quarter Squat (45)",
@@ -318,68 +377,55 @@ def status():
                 3: "Full Squat (120)",
                 4: "Improper Squat"
             }
+=======
+        # อัปเดตข้อมูล rep_number ให้ครบ
+        for idx, kf in enumerate(status_data.get('keyframes', [])):
+            if 'rep_number' not in kf:
+                kf['rep_number'] = idx + 1
+            if 'depth' not in kf:
+                kf['depth'] = current_depth_idx
+            if 'depth_text' not in kf:
+                kf['depth_text'] = current_depth_text
+>>>>>>> origin/cordelia
 
-            for idx, kf in enumerate(status_data['keyframes']):
-                if 'rep_number' not in kf:
-                    kf['rep_number'] = idx + 1
-                
-                if 'depth' not in kf:
-                    if idx < len(user_data.get('reps', [])):
-                        depth_value = user_data['reps'][idx].get('depth')
-                        if depth_value is not None and isinstance(depth_value, int):
-                            kf['depth'] = depth_map.get(depth_value, "Unknown")
-                    if 'depth' not in kf and hasattr(processor, 'state_tracker'):
-                        display_depth = processor.state_tracker['DISPLAY_DEPTH']
-                        for i, is_active in enumerate(display_depth):
-                            if is_active:
-                                kf['depth'] = depth_map.get(i, "Unknown")
-                                break
-
-
-        # รวมข้อมูลจาก user_data["reps"]
-        last_record = None
-        total_reps = 0
-        if 'user_data' in globals() and 'reps' in user_data and len(user_data["reps"]) > 0:
-            total_reps = len(user_data["reps"])
-            last_record = user_data["reps"][-1]
-
-        # ตรวจสอบว่าถ้าครบ reps ให้หยุดการทำงาน
-        if status_data.get('rounds_count', 0) >= session.get('target_reps', 0):
+        # ตรวจสอบจำนวนรอบที่เสร็จ
+        done_reps = status_data.get('rounds_count', 0)
+        target_reps = session.get('target_reps', 0)
+        if done_reps >= target_reps and target_reps > 0:
             session['running'] = False
-            
-        # รวมทั้งหมดใน response (ไม่รวม keyframes)
-        if user_vec is not None:
-            print(f"Found user_vec to send: {user_vec[:50]}..." if isinstance(user_vec, (list, tuple)) else user_vec)
-            
+
         response_data = {
-            'target_reps': session.get('target_reps', 0),
-            'done_reps': status_data.get('rounds_count', 0),
+            'target_reps': target_reps,
+            'done_reps': done_reps,
             'running': session.get('running', False),
             'trainer_enabled': session.get('trainer_enabled', False),
             'similarity': similarity if similarity is not None else "Waiting...",
-            'depth': depth_text,
-            'depth_value': current_depth,
-            'user_vec': user_vec, 
-            'total_records': total_reps,
+            'depth': current_depth_text,
+            'depth_value': current_depth_idx,
+            'user_vec': user_vec,
+            'total_records': len(user_data.get('reps', [])),
             'play_sound': state.get('play_sound', False)
         }
+
         if state.get('play_sound'):
             state['play_sound'] = False
 
-        print(f"Status response: {response_data}")
+        print(f"[STATUS] {response_data}")
         return jsonify(response_data)
 
     except Exception as e:
-        print(f"Error in status endpoint: {e}")
+        print(f"[ERROR] in /status: {e}")
         return jsonify({
             'error': str(e),
             'target_reps': 0,
             'done_reps': 0,
             'running': False,
             'trainer_enabled': False,
-            'keyframes': [],
-            'current_state': {},
-            'last_similarity': None
+            'similarity': None,
+            'depth': "Unknown",
+            'depth_value': None,
+            'user_vec': None,
+            'play_sound': False
         })
 
 @app.route('/trainer_exists')
@@ -432,6 +478,7 @@ def get_keyframes():
         if os.path.exists(status_path):
             with open(status_path, 'r', encoding='utf-8') as f:
                 status_data = json.load(f)
+<<<<<<< HEAD
         
         def get_depth_text(depth_value):
             depth_map = {
@@ -446,51 +493,43 @@ def get_keyframes():
             if isinstance(depth_value, int) and depth_value in depth_map:
                 return depth_map.get(depth_value)
             return str(depth_value)
+=======
+>>>>>>> origin/cordelia
 
         cleaned = []
         last_img = None
+
+        depth_idx = processor.get_depth()
+        dv, depth_text = processor.get_depth(as_text=True)
+        if depth_idx is None:
+            depth_idx = dv
+
         if status_data.get('keyframes'):
             for idx, kf in enumerate(status_data['keyframes']):
                 img = kf.get('user_image')
                 if img and img == last_img:
                     continue
+
+                # กำหนด rep number ถ้าไม่มี
                 if 'rep_number' not in kf:
                     kf['rep_number'] = len(cleaned) + 1
 
-                # จัดการค่า depth
-                depth_value = None
-                depth_text = "Unknown"
+                # ถ prefere ใช้ค่าจาก processor.get_depth() ก่อน (ถ้ามี)
+                # ถ้า processor ไม่มีค่า ให้ fallback ไปใช้ค่าเก่าที่บันทึกใน keyframe
+                depth_value = depth_idx if depth_idx is not None else kf.get('depth')
+                depth_str = depth_text if (depth_text is not None and depth_text != "Unknown") else kf.get('depth_text')
 
-                # 1. ลองดึงจาก keyframe ก่อน
-                if 'depth' in kf:
-                    if isinstance(kf['depth'], int):
-                        depth_value = kf['depth']
-                    elif isinstance(kf['depth'], str):
-                        depth_text = kf['depth']  
+                # เก็บเฉพาะค่าที่มีความหมาย (อย่าเซฟ None หรือ "Unknown")
+                if depth_value is not None:
+                    kf['depth'] = depth_value
+                else:
+                    kf.pop('depth', None)
 
-                # 2. ถ้าไม่มีใน keyframe ลองดึงจาก user_data
-                if depth_value is None and idx < len(user_data.get('reps', [])):
-                    depth_value = user_data['reps'][idx].get('depth')
-                
-                # 3. ถ้าเป็นค่าตัวเลข แปลงเป็นข้อความ
-                if isinstance(depth_value, (int, float)):
-                    depth_map = {
-                        0: "Quarter Squat (45°)",
-                        1: "Half Squat (60°)",
-                        2: "Parallel Squat (90°)",
-                        3: "Full Squat (120°)",
-                        4: "Improper Squat"
-                    }
-                    if depth_value >= 4:
-                        depth_value = 4
-                        depth_text = "Improper Squat"
-                    else:
-                        depth_text = depth_map.get(depth_value, "Improper Squat")
+                if depth_str is not None and depth_str != "Unknown":
+                    kf['depth_text'] = depth_str
+                else:
+                    kf.pop('depth_text', None)
 
-                # อัพเดทข้อมูลใน keyframe
-                kf['depth'] = depth_value
-                kf['depth_text'] = depth_text
-                
                 cleaned.append(kf)
                 last_img = img
 
@@ -499,6 +538,7 @@ def get_keyframes():
             'total_reps': len(cleaned),
             'rounds_count': len(cleaned)
         })
+
     except Exception as e:
         print(f"Error in get_keyframes endpoint: {e}")
         return jsonify({
@@ -509,6 +549,7 @@ def get_keyframes():
 
 
 
+<<<<<<< HEAD
 
 
 def get_depth_from_tracker():
@@ -533,6 +574,8 @@ def get_depth_from_tracker():
         return str(depth)
     return None
 
+=======
+>>>>>>> origin/cordelia
 def load_user_data():
     global user_data
     try:
@@ -546,6 +589,26 @@ def load_user_data():
     except Exception as e:
         print(f"Failed to load user_data from {USER_DATA_PATH}:", e)
         user_data = {'reps': []}
+
+    try:
+        reps = user_data.get('reps', [])
+        changed = False
+        for rep in reps:
+            d = rep.get('depth')
+            if isinstance(d, (list, tuple)):
+                try:
+                    rep['depth_value'] = d[0]
+                except Exception:
+                    rep['depth_value'] = None
+                try:
+                    rep['depth'] = d[1]
+                except Exception:
+                    rep['depth'] = 'Unknown'
+                changed = True
+        if changed:
+            save_user_data()
+    except Exception:
+        pass
 
 def save_user_data():
     try:

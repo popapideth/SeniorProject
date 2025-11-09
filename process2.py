@@ -31,7 +31,7 @@ def save_keyframe_image(frame_bgr, role="user"):
     cv2.imwrite(full_path, frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
     return "/" + full_path.replace(os.path.sep, "/")
 
-def append_status_entry(user_image_url=None, similarity=None, rounds_count=None, user_vec=None):
+def append_status_entry(user_image_url=None, similarity=None, rounds_count=None, user_vec=None, **kwargs):
     ensure_dir(os.path.dirname(STATUS_JSON))
     status = {"keyframes": [], "rounds_count": 0}
     try:
@@ -45,13 +45,14 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None,
         "timestamp": int(_time.time() * 1000),
         "user_image": user_image_url,
         "similarity": float(similarity) if similarity is not None else None,
-        "user_vec": user_vec  # เพิ่ม user_vec เข้าไปใน entry
+        "user_vec": user_vec,
+        "rounds_count": int(rounds_count) if rounds_count is not None else int(status.get("rounds_count", 0)),
     }
+    # เพิ่ม field อื่นๆ ที่ส่งเข้ามาผ่าน kwargs
+    entry.update(kwargs)
+
     status.setdefault("keyframes", []).append(entry)
-    if rounds_count is not None:
-        status["rounds_count"] = int(rounds_count)
-    else:
-        status["rounds_count"] = int(status.get("rounds_count", 0))
+    status["rounds_count"] = entry["rounds_count"]
     if len(status["keyframes"]) > 200:
         status["keyframes"] = status["keyframes"][-200:]
     with open(STATUS_JSON, "w", encoding="utf-8") as fh:
@@ -59,6 +60,7 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None,
     return status
 
 class ProcessFrame:
+    
     def __init__(self, thresholds, flip_frame = False, similarity_callback=None):
         self.st = time.time()
         self.flip_frame = flip_frame
@@ -511,19 +513,7 @@ class ProcessFrame:
 
                         print("Similarity per angle:", angle_similarity)
                         print(f"Average similarity: {total_similarity:.2f}%")
-                        
-                        try:
-                            if self.similarity_callback is not None:
-                                data = {
-                                    "similarity": round(float(total_similarity), 2),
-                                    "depth": self.state_tracker['keyframe']['angles'].get('hip', None),
-                                    "user_vec": user_vec.tolist(),
-                                    "rep_number": self.state_tracker['rounds_count'],
-                                    "timestamp": time.time()
-                                }
-                            self.similarity_callback(data)
-                        except Exception:
-                            pass
+                        print(f"---------------------------------------")
                         print(f"---------------------------------------")
                         print("trainer_vec:", trainer_vec)
                         print("user_vec:", user_vec)
@@ -562,6 +552,31 @@ class ProcessFrame:
                             self.state_tracker['COUNT_DEPTH'][4] += 1
                             self.state_tracker['POINT_OF_MISTAKE'][3] = True
                             self.state_tracker['INCORRECT_POSTURE'] = True
+                            
+                        current_depth = None
+                        depth_text = "Unknown"
+                        display_depth = self.state_tracker.get('DISPLAY_DEPTH', [])
+                        for i, active in enumerate(display_depth):
+                            if active:
+                                current_depth = i
+                                depth_text = self.DEPTH_MAP.get(i, "Unknown")
+                                break
+
+                        try:
+                            if self.similarity_callback is not None:
+                                data = {
+                                    "similarity": round(float(total_similarity), 2),
+                                    "depth": depth_text,
+                                    "depth_value": current_depth,
+                                    "user_vec": user_vec.tolist(),
+                                    "rep_number": self.state_tracker['rounds_count'],
+                                    "timestamp": time.time()
+                                }
+                                self.similarity_callback(data)
+                                print(f"DEBUG - Sending depth data: {depth_text} (value: {current_depth})")
+                        except Exception as e:
+                            print(f"Error in similarity callback: {str(e)}")
+                            pass
 
                         # threshold
                         if abs(kf_knee_coord['x'] - kf_foot_coord['x'])*frame_width > self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
@@ -584,12 +599,9 @@ class ProcessFrame:
                         print(
                             f"รอบที่ {self.state_tracker['rounds_count']+1} เสร็จแล้ว")
                         self.state_tracker['rounds_count'] += 1
-                        # --- auto-save user keyframe image and status.json for frontend polling ---
                         try:
-                            # show_keyframe is expected to be in scope (set earlier by save_keyframe_json(...))
                             if 'show_keyframe' in locals() and show_keyframe is not None and 'frame' in show_keyframe:
                                 user_img_url = save_keyframe_image(show_keyframe['frame'], role="user")
-                                # append status entry (similarity total_similarity expected in scope)
                                 try:
                                     rounds = int(self.state_tracker.get('rounds_count', 0))
                                 except Exception:
@@ -598,16 +610,16 @@ class ProcessFrame:
                                     sim_val = float(total_similarity)
                                 except Exception:
                                     sim_val = None
-                                # ส่ง user_vec ไปด้วยเมื่อบันทึกลง status.json
                                 user_vec_data = self.state_tracker.get('latest_user_vec')
                                 append_status_entry(
                                     user_image_url=user_img_url,
                                     similarity=sim_val,
-                                    rounds_count=rounds,
-                                    user_vec=user_vec_data
+                                    user_vec=user_vec_data,
+                                    depth=depth_text,
+                                    depth_text=depth_text,
+                                    depth_value=current_depth
                                 )
                         except Exception as _e:
-                            # don't break processing for any reason
                             pass
                         # --- end auto-save ---
 
@@ -647,7 +659,28 @@ class ProcessFrame:
                 print(f'ตรงนี้ {e}')
                 self.st = time.time()
             pass
-
-
-
         return frame
+
+    DEPTH_MAP = {
+        0: "Quarter Squat (45°)",
+        1: "Half Squat (60°)",
+        2: "Parallel Squat (90°)",
+        3: "Full Squat (120°)",
+        4: "Improper Squat"
+    }
+
+    def get_depth(self, as_text=False):
+        if not hasattr(self, "state_tracker"):
+            return (None, "Unknown") if as_text else None
+
+        display_depth = self.state_tracker.get("DISPLAY_DEPTH", [])
+        if not isinstance(display_depth, (list, np.ndarray)) or len(display_depth) == 0:
+            return (None, "Unknown") if as_text else None
+
+        for i, active in enumerate(display_depth):
+            if active:
+                depth_text = self.DEPTH_MAP.get(i, "Unknown")
+                self.state_tracker["DISPLAY_DEPTH"][:] = False
+                return (i, depth_text) if as_text else i
+
+        return (None, "Unknown") if as_text else None
