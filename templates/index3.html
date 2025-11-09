@@ -1,515 +1,679 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Squat Trainer</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: #f6f8fa;
+      }
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>Squat Trainer</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      background: #f6f8fa;
-    }
+      .card {
+        box-shadow: 0 2px 8px #3729295a;
+      }
 
-    .card {
-      box-shadow: 0 2px 8px #3729295a;
-    }
+      #live {
+        background: #000000ff;
+      }
 
-    #live {
-      background: #000000ff;
-    }
+      .keyframes-container {
+        height: 400px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
 
-    .keyframes-container {
-      height: 400px;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
+      #keyframes {
+        position: relative;
+        height: 320px;
+        overflow: hidden;
+      }
 
-    #keyframes {
-      position: relative;
-      height: 320px;
-      overflow: hidden;
-    }
+      #keyframes .card {
+        transition: all 0.3s ease;
+        opacity: 1;
+        position: absolute;
+        width: 100%;
+        left: 0;
+        right: 0;
+      }
 
-    #keyframes .card {
-      transition: all 0.3s ease;
-      opacity: 1;
-      position: absolute;
-      width: 100%;
-      left: 0;
-      right: 0;
-    }
+      #keyframes .card.fade-out {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
 
-    #keyframes .card.fade-out {
-      opacity: 0;
-      transform: translateX(-20px);
-    }
+      #keyframes .card.fade-in {
+        opacity: 1;
+        transform: translateX(0);
+      }
 
-    #keyframes .card.fade-in {
-      opacity: 1;
-      transform: translateX(0);
-    }
+      .bi {
+        display: inline-block;
+        vertical-align: -0.125em;
+      }
 
-    .bi {
-      display: inline-block;
-      vertical-align: -0.125em;
-    }
+      .bi-chevron-left::before {
+        content: "‹";
+      }
 
-    .bi-chevron-left::before {
-      content: "‹";
-    }
+      .bi-chevron-right::before {
+        content: "›";
+      }
+    </style>
+    <script src="/static/sounds.js"></script>
+  </head>
 
-    .bi-chevron-right::before {
-      content: "›";
-    }
-  </style>
-  <script src="/static/sounds.js"></script>
-</head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Squat Trainer</a>
+      </div>
+    </nav>
 
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">Squat Trainer</a>
-    </div>
-  </nav>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-8">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex gap-2 align-items-center mb-3">
+                <div class="reps-me"></div>
+                <input
+                  id="reps"
+                  type="number"
+                  class="form-control"
+                  style="width: 90px"
+                  placeholder="Reps"
+                  min="1"
+                />
+                <button id="start" class="btn btn-primary" disabled>
+                  Start
+                </button>
+                <button id="stop" class="btn btn-danger" disabled>Stop</button>
+                <button id="toggle_trainer" class="btn btn-warning">
+                  Trainer Video
+                </button>
+                <button id="enable_audio" class="btn btn-outline-secondary">
+                  Audio
+                </button>
 
-  <div class="container">
-    <div class="row">
-      <div class="col-md-8">
-        <div class="card mb-3">
-          <div class="card-body">
-            <div class="d-flex gap-2 align-items-center mb-3">
-              <div class="reps-me"></div>
-              <input id="reps" type="number" class="form-control" style="width:90px" placeholder="Reps" min="1">
-              <button id="start" class="btn btn-primary" disabled>Start</button>
-              <button id="stop" class="btn btn-danger" disabled>Stop</button>
-              <button id="toggle_trainer" class="btn btn-warning">Trainer Video</button>
-              <button id="enable_audio" class="btn btn-outline-secondary">Audio</button>
+                <div id="countdown" class="ms-3 text-muted fw-bold"></div>
+              </div>
 
-              <div id="countdown" class="ms-3 text-muted fw-bold"></div>
+              <div
+                id="preview_area"
+                class="position-relative"
+                style="min-height: 520px"
+              >
+                <img
+                  id="live"
+                  src="/video"
+                  class="w-100"
+                  style="height: 520px; object-fit: cover"
+                />
+              </div>
+
+              <div class="mt-3">
+                <div class="progress" style="height: 25px">
+                  <div
+                    id="progress_bar"
+                    class="progress-bar"
+                    role="progressbar"
+                    style="width: 0%; font-size: 14px; font-weight: 500"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="top"
+                  >
+                    0/0
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
+        </div>
 
-            <div id="preview_area" class="position-relative" style="min-height:520px">
-              <img id="live" src="/video" class="w-100" style="height:520px; object-fit:cover;" />
-            </div>
-
-            <div class="mt-3">
-              <div class="progress" style="height: 25px;">
-                <div id="progress_bar" class="progress-bar" role="progressbar"
-                  style="width:0%; font-size: 14px; font-weight: 500;" data-bs-toggle="tooltip" data-bs-placement="top">
-                  0/0</div>
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Trainer</h5>
+              <div id="trainer_alert" class="alert alert-warning d-none">
+                No trainer video found.
+              </div>
+              <video
+                id="trainer_vid"
+                width="100%"
+                controls
+                style="display: none"
+                loop
+                muted
+                src="/static/trainer.mp4"
+              ></video>
+              <hr />
+              <h6>Current Squat</h6>
+              <div class="current-squat mb-3">
+                <img
+                  id="kf_user"
+                  src="/static/placeholder.png"
+                  alt="user keyframe"
+                  style="
+                    width: 100%;
+                    height: 200px;
+                    object-fit: cover;
+                    border-radius: 8px;
+                    border: 2px solid #eee;
+                    margin-bottom: 10px;
+                  "
+                />
+                <div
+                  id="sim"
+                  class="d-flex justify-content-between align-items-center mb-2"
+                >
+                  <span class="fw-bold">Similarity:</span>
+                  <span class="badge bg-primary" style="font-size: 0.9rem"
+                    >N/A</span
+                  >
+                </div>
+                <div
+                  id="squat_depth"
+                  class="d-flex justify-content-between align-items-center mb-2"
+                >
+                  <span class="fw-bold">Squat Depth:</span>
+                  <span class="badge bg-info" style="font-size: 0.9rem"
+                    >N/A</span
+                  >
+                </div>
+                <div
+                  id="user_vec"
+                  class="d-flex justify-content-between align-items-center mb-2"
+                >
+                  <span class="fw-bold">User Vector:</span>
+                  <span
+                    class="badge bg-secondary"
+                    style="
+                      font-size: 0.8rem;
+                      max-width: 200px;
+                      overflow-x: auto;
+                    "
+                    >N/A</span
+                  >
+                </div>
+                <div
+                  id="user_keyframe"
+                  class="d-flex justify-content-between align-items-center mb-2"
+                >
+                  <span class="fw-bold">Keyframe:</span>
+                  <span class="badge bg-secondary" style="font-size: 0.9rem"
+                    >N/A</span
+                  >
+                </div>
+              </div>
+              <hr />
+              <h6>Previous Squats</h6>
+              <div class="keyframes-container p-3" style="height: 400px">
+                <div
+                  id="keyframes"
+                  class="position-relative"
+                  style="
+                    height: 320px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
+                >
+                  <!-- รูป rep ก่อนหน้าจะเพิ่มมาที่นี่ -->
+                </div>
+                <div
+                  class="d-flex justify-content-between align-items-center mt-3"
+                >
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    id="prevPage"
+                    disabled
+                  >
+                    <i class="bi bi-chevron-left"></i> Previous Rep
+                  </button>
+                  <span id="pageInfo" class="text-muted fw-bold"
+                    >Rep 0 of 0</span
+                  >
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    id="nextPage"
+                    disabled
+                  >
+                    Next Rep <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-
-      <div class="col-md-4">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Trainer</h5>
-            <div id="trainer_alert" class="alert alert-warning d-none">No trainer video found.</div>
-            <video id="trainer_vid" width="100%" controls style="display:none" loop muted
-              src="/static/trainer.mp4"></video>
-            <hr />
-            <h6>Current Squat</h6>
-            <div class="current-squat mb-3">
-              <img id="kf_user" src="/static/placeholder.png" alt="user keyframe"
-                style="width:100%; height:200px; object-fit:cover; border-radius:8px; border:2px solid #eee; margin-bottom:10px;">
-              <div id="sim" class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-bold">Similarity:</span>
-                <span class="badge bg-primary" style="font-size: 0.9rem;">N/A</span>
-              </div>
-              <div id="squat_depth" class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-bold">Squat Depth:</span>
-                <span class="badge bg-info" style="font-size: 0.9rem;">N/A</span>
-              </div>
-              <div id="user_vec" class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-bold">User Vector:</span>
-                <span class="badge bg-secondary" style="font-size: 0.8rem; max-width: 200px; overflow-x: auto;">N/A</span>
-              </div>
-              <div id="user_keyframe" class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-bold">Keyframe:</span>
-                <span class="badge bg-secondary" style="font-size: 0.9rem;">N/A</span>
-              </div>
-            </div>
-             <hr />
-            <h6>Previous Squats</h6>
-            <div class="keyframes-container p-3" style="height: 400px;">
-              <div id="keyframes" class="position-relative" style="height: 320px; display: flex; align-items: center; justify-content: center;">
-                <!-- รูป rep ก่อนหน้าจะเพิ่มมาที่นี่ -->
-              </div>
-              <div class="d-flex justify-content-between align-items-center mt-3">
-                <button class="btn btn-sm btn-outline-secondary" id="prevPage" disabled>
-                  <i class="bi bi-chevron-left"></i> Previous Rep
-                </button>
-                <span id="pageInfo" class="text-muted fw-bold">Rep 0 of 0</span>
-                <button class="btn btn-sm btn-outline-secondary" id="nextPage" disabled>
-                  Next Rep <i class="bi bi-chevron-right"></i>
-                </button>
-              </div>
-            </div>
-
+    <!-- Summary Modal -->
+    <div
+      class="modal fade"
+      id="summaryModal"
+      tabindex="-1"
+      aria-labelledby="summaryModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="summaryModalLabel">Session Summary</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p>Total reps: <strong id="summary_total">0</strong></p>
+            <p>Correct: <strong id="summary_correct">0</strong></p>
+            <p>Incorrect: <strong id="summary_incorrect">0</strong></p>
+            <p>Average similarity: <strong id="summary_avg">N/A</strong></p>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Summary Modal -->
-  <div class="modal fade" id="summaryModal" tabindex="-1" aria-labelledby="summaryModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="summaryModalLabel">Session Summary</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>Total reps: <strong id="summary_total">0</strong></p>
-          <p>Correct: <strong id="summary_correct">0</strong></p>
-          <p>Incorrect: <strong id="summary_incorrect">0</strong></p>
-          <p>Average similarity: <strong id="summary_avg">N/A</strong></p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      let lastShownRep = 0;
+      let displayedMainSrc = "";
+      let displayedRepId = null;
+      let displayedUserVec = "";
+      let currentCardKey = null;
+      let lastCardTimestamp = 0;
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-  let lastShownRep = 0;
-  let displayedMainSrc = '';      
-  let displayedRepId = null;      
-  let displayedUserVec = '';     
-  let currentCardKey = null;     
-  let lastCardTimestamp = 0;    
-
-    async function fetchStatusOnce() {
-      try {
-        const r = await fetch('/status?ts=' + Date.now());
-        if (!r.ok) return;
-        const data = await r.json();
-
-        let kfData = { keyframes: [], total_reps: 0, rounds_count: 0 };
+      async function fetchStatusOnce() {
         try {
-          const rk = await fetch('/get_keyframes?ts=' + Date.now());
-          if (rk.ok) kfData = await rk.json();
-        } catch (err) {
-          console.error('Failed to fetch keyframes:', err);
-        }
+          const r = await fetch("/status?ts=" + Date.now());
+          if (!r.ok) return;
+          const data = await r.json();
 
-        if (kfData.keyframes && kfData.keyframes.length > 0) {
-          const latestKeyframe = kfData.keyframes[kfData.keyframes.length - 1];
-          if (latestKeyframe) {
-            if (latestKeyframe.user_image) {
-              const img = document.getElementById('kf_user');
-              const baseImagePath = latestKeyframe.user_image.split('?')[0];
-              
-              if (displayedMainSrc !== baseImagePath) {
-                const newSrc = baseImagePath + '?t=' + Date.now();
-                img.src = newSrc;
-                displayedMainSrc = baseImagePath;
-                console.log('Updated main keyframe image:', baseImagePath);
-              }
-            }
-
-            // ไม่ต้องอัพเดท vector ที่นี่ จะใช้จาก status แทน
+          let kfData = { keyframes: [], total_reps: 0, rounds_count: 0 };
+          try {
+            const rk = await fetch("/get_keyframes?ts=" + Date.now());
+            if (rk.ok) kfData = await rk.json();
+          } catch (err) {
+            console.error("Failed to fetch keyframes:", err);
           }
-        }
-        
-        const simBadge = document.querySelector('#sim .badge');
-        const depthBadge = document.querySelector('#squat_depth .badge');
-        const keyBadge = document.querySelector('#user_keyframe .badge');
-        const vecBadge = document.querySelector('#user_vec .badge');
-        
-        // อัพเดทแบดจ์จากข้อมูล status
-        if (simBadge) simBadge.innerText = (data.similarity !== undefined ? data.similarity : 'Waiting...');
-        if (depthBadge) depthBadge.innerText = (data.depth || 'N/A');
-        if (keyBadge) keyBadge.innerText = `#${kfData.keyframes ? kfData.keyframes.length : 0}`;
-        
-        // อัพเดท user vector จากข้อมูล status โดยตรง
-        if (vecBadge) {
-            const newVecText = data.user_vec 
-                ? JSON.stringify(data.user_vec).substring(0, 50) + '...'
-                : 'N/A';
-            
+
+          if (kfData.keyframes && kfData.keyframes.length > 0) {
+            const latestKeyframe =
+              kfData.keyframes[kfData.keyframes.length - 1];
+            if (latestKeyframe) {
+              if (latestKeyframe.user_image) {
+                const img = document.getElementById("kf_user");
+                const baseImagePath = latestKeyframe.user_image.split("?")[0];
+
+                if (displayedMainSrc !== baseImagePath) {
+                  const newSrc = baseImagePath + "?t=" + Date.now();
+                  img.src = newSrc;
+                  displayedMainSrc = baseImagePath;
+                  console.log("Updated main keyframe image:", baseImagePath);
+                }
+              }
+
+              // ไม่ต้องอัพเดท vector ที่นี่ จะใช้จาก status แทน
+            }
+          }
+
+          const simBadge = document.querySelector("#sim .badge");
+          const depthBadge = document.querySelector("#squat_depth .badge");
+          const keyBadge = document.querySelector("#user_keyframe .badge");
+          const vecBadge = document.querySelector("#user_vec .badge");
+
+          // อัพเดทแบดจ์จากข้อมูล status
+          if (simBadge)
+            simBadge.innerText =
+              data.similarity !== undefined ? data.similarity : "Waiting...";
+          if (depthBadge) depthBadge.innerText = data.depth || "N/A";
+          if (keyBadge)
+            keyBadge.innerText = `#${
+              kfData.keyframes ? kfData.keyframes.length : 0
+            }`;
+
+          // อัพเดท user vector จากข้อมูล status โดยตรง
+          if (vecBadge) {
+            const newVecText = data.user_vec
+              ? JSON.stringify(data.user_vec).substring(0, 50)
+              : "N/A";
+
             // อัพเดทเฉพาะเมื่อค่าเปลี่ยนแปลง
             if (newVecText !== displayedUserVec) {
-                vecBadge.innerText = newVecText;
-                displayedUserVec = newVecText;
-                console.log('Updated user vector display:', newVecText);
+              vecBadge.innerText = newVecText;
+              displayedUserVec = newVecText;
+              console.log("Updated user vector display:", newVecText);
             }
-        }
+          }
 
-        const totalReps = Number(document.getElementById('reps').value) || 0;
-        const completedReps = data.done_reps || 0;
-        const pct = totalReps > 0 ? Math.round((completedReps / totalReps) * 100) : 0;
-        const bar = document.getElementById('progress_bar');
-        if (bar) {
-          bar.style.width = pct + '%';
-          bar.innerText = `${completedReps}/${totalReps} รอบ`;
-        }
-        const repCountEl = document.getElementById('rep_count');
-        if (repCountEl) repCountEl.innerText = completedReps;
+          const totalReps = Number(document.getElementById("reps").value) || 0;
+          const completedReps = data.done_reps || 0;
+          const pct =
+            totalReps > 0 ? Math.round((completedReps / totalReps) * 100) : 0;
+          const bar = document.getElementById("progress_bar");
+          if (bar) {
+            bar.style.width = pct + "%";
+            bar.innerText = `${completedReps}/${totalReps} รอบ`;
+          }
+          const repCountEl = document.getElementById("rep_count");
+          if (repCountEl) repCountEl.innerText = completedReps;
 
-        if (completedReps > lastShownRep || data.play_sound) {
+          if (completedReps > lastShownRep || data.play_sound) {
             try {
-                console.log('Playing complete sound for rep:', completedReps);
-                if (completeSound) {
-                    await completeSound.play();
+              console.log("Playing complete sound for rep:", completedReps);
+              if (completeSound) {
+                await completeSound.play();
+              }
+
+              if (completedReps >= totalReps && totalReps > 0) {
+                console.log("Playing all complete sound");
+                if (allCompleteSound) {
+                  await allCompleteSound.play();
+                  fetch("/stop", { method: "POST" });
                 }
-            
-                if (completedReps >= totalReps && totalReps > 0) {
-                    console.log('Playing all complete sound');
-                    if (allCompleteSound) {
-                        await allCompleteSound.play();
-                        fetch('/stop', { method: 'POST' });
-                    }
-                }
+              }
             } catch (e) {
-                console.error('Error playing sound:', e);
+              console.error("Error playing sound:", e);
             }
             lastShownRep = completedReps;
-        }
+          }
 
-        const prevContainer = document.getElementById('keyframes');
-        const prevButton = document.getElementById('prevPage');
-        const nextButton = document.getElementById('nextPage');
-        const pageInfo = document.getElementById('pageInfo');
-        
-        if (Array.isArray(kfData.keyframes)) {
-          const previous = kfData.keyframes.slice(0, -1).reverse();
-          
-          const totalPages = previous.length;
-          let currentPage = window.currentPage || 1;
-          
-          prevButton.disabled = currentPage <= 1;
-          nextButton.disabled = currentPage >= totalPages;
-          pageInfo.textContent = totalPages > 0 ? `Rep ${currentPage} of ${totalPages}` : 'No previous reps';
-          
-          prevButton.onclick = () => {
-            if (currentPage > 1) {
-              window.currentPage = --currentPage;
-              updateKeyframeDisplay(previous, currentPage, data);
+          const prevContainer = document.getElementById("keyframes");
+          const prevButton = document.getElementById("prevPage");
+          const nextButton = document.getElementById("nextPage");
+          const pageInfo = document.getElementById("pageInfo");
+
+          if (Array.isArray(kfData.keyframes)) {
+            const previous = kfData.keyframes.slice(0, -1).reverse();
+
+            const totalPages = previous.length;
+            let currentPage = window.currentPage || 1;
+
+            prevButton.disabled = currentPage <= 1;
+            nextButton.disabled = currentPage >= totalPages;
+            pageInfo.textContent =
+              totalPages > 0
+                ? `Rep ${currentPage} of ${totalPages}`
+                : "No previous reps";
+
+            prevButton.onclick = () => {
+              if (currentPage > 1) {
+                window.currentPage = --currentPage;
+                updateKeyframeDisplay(previous, currentPage, data);
+              }
+            };
+
+            nextButton.onclick = () => {
+              if (currentPage < totalPages) {
+                window.currentPage = ++currentPage;
+                updateKeyframeDisplay(previous, currentPage, data);
+              }
+            };
+
+            // อัพเดทการแสดงผลเฉพาะเมื่อจำเป็น
+            if (previous.length > 0) {
+              if (previous.length !== window.lastKeyframesLength) {
+                window.lastKeyframesLength = previous.length;
+                window.currentPage = 1;
+              }
+              window.currentPage = window.currentPage || 1;
+
+              const currentPage = Math.max(
+                1,
+                Math.min(window.currentPage, previous.length)
+              );
+              const currentItem = previous[currentPage - 1];
+
+              // ใช้ requestAnimationFrame เพื่อทำให้การอัพเดทนุ่มนวล
+              requestAnimationFrame(() => {
+                updateKeyframeDisplay(previous, currentPage, data);
+              });
+            } else {
+              prevContainer.innerHTML =
+                '<div class="text-muted text-center">No previous reps yet</div>';
             }
-          };
-          
-          nextButton.onclick = () => {
-            if (currentPage < totalPages) {
-              window.currentPage = ++currentPage;
-              updateKeyframeDisplay(previous, currentPage, data);
+          }
+
+          // เก็บค่าการ์ดที่แสดงอยู่ปัจจุบัน
+          let lastDisplayedCard = null;
+
+          function updateKeyframeDisplay(items, page) {
+            if (!items || items.length === 0) {
+              if (
+                prevContainer.innerHTML !==
+                '<div class="text-muted text-center">No previous reps yet</div>'
+              ) {
+                prevContainer.innerHTML =
+                  '<div class="text-muted text-center">No previous reps yet</div>';
+              }
+              return;
             }
-          };
-          
-          // อัพเดทการแสดงผลเฉพาะเมื่อจำเป็น
-          if (previous.length > 0) {
-            if (previous.length !== window.lastKeyframesLength) {
-              window.lastKeyframesLength = previous.length;
-              window.currentPage = 1;
+
+            // Ensure valid page number
+            page = Math.max(1, Math.min(page, items.length));
+            const kf = items[page - 1];
+
+            if (!kf) {
+              console.error("No keyframe data for page:", page);
+              return;
             }
-            window.currentPage = window.currentPage || 1;
-            
-            const currentPage = Math.max(1, Math.min(window.currentPage, previous.length));
-            const currentItem = previous[currentPage - 1];
-            
-            // ใช้ requestAnimationFrame เพื่อทำให้การอัพเดทนุ่มนวล
-            requestAnimationFrame(() => {
-              updateKeyframeDisplay(previous, currentPage, data);
+
+            const newCardKey = `${kf.rep_number}-${kf.user_image}-${
+              kf.similarity
+            }-${kf.depth}-${JSON.stringify(kf.user_vec)}`;
+
+            console.log("Card data:", {
+              rep: kf.rep_number,
+              depth: kf.depth,
+              similarity: kf.similarity,
+              hasUserVec: !!kf.user_vec,
             });
-          } else {
-            prevContainer.innerHTML = '<div class="text-muted text-center">No previous reps yet</div>';
-          }
-        }
 
-        // เก็บค่าการ์ดที่แสดงอยู่ปัจจุบัน
-        let lastDisplayedCard = null;
-
-        function updateKeyframeDisplay(items, page) {
-          if (!items || items.length === 0) {
-            if (prevContainer.innerHTML !== '<div class="text-muted text-center">No previous reps yet</div>') {
-              prevContainer.innerHTML = '<div class="text-muted text-center">No previous reps yet</div>';
+            if (newCardKey === currentCardKey) {
+              return;
             }
-            return;
-          }
 
-          // Ensure valid page number
-          page = Math.max(1, Math.min(page, items.length));
-          const kf = items[page - 1];
-          
-          if (!kf) {
-            console.error('No keyframe data for page:', page);
-            return;
-          }
+            const now = Date.now();
+            if (now - lastCardTimestamp < 100) {
+              return;
+            }
 
-         
-          const newCardKey = `${kf.rep_number}-${kf.user_image}-${kf.similarity}-${kf.depth}-${JSON.stringify(kf.user_vec)}`;
-        
-          console.log('Card data:', {
-            rep: kf.rep_number,
-            depth: kf.depth,
-            similarity: kf.similarity,
-            hasUserVec: !!kf.user_vec
-          });
-          
-          if (newCardKey === currentCardKey) {
-            return;
-          }
-          
-          const now = Date.now();
-          if (now - lastCardTimestamp < 100) {
-            return;
-          }
-          
-          currentCardKey = newCardKey;
-          lastCardTimestamp = now;
-          
-          // อัพเดทการ์ดอย่างนุ่มนวล
-          const card = document.createElement('div');
-          card.className = 'card w-100 fade-out';
-          
-          // สร้างการ์ดใหม่แต่ยังไม่แสดง
-          const updateDOM = () => {
-            prevContainer.innerHTML = '';
-            card.innerHTML = `
+            currentCardKey = newCardKey;
+            lastCardTimestamp = now;
+
+            // อัพเดทการ์ดอย่างนุ่มนวล
+            const card = document.createElement("div");
+            card.className = "card w-100 fade-out";
+
+            // สร้างการ์ดใหม่แต่ยังไม่แสดง
+            const updateDOM = () => {
+              prevContainer.innerHTML = "";
+              card.innerHTML = `
               <div class="card-body">
                 <div class="text-center mb-3">
-                  <img src="${kf.user_image || '/static/placeholder.png'}?t=${Date.now()}"
+                  <img src="${
+                    kf.user_image || "/static/placeholder.png"
+                  }?t=${Date.now()}"
                        style="width:200px; height:180px; object-fit:cover; border-radius:8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 </div>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <h5 class="mb-0">Rep #${kf.rep_number || page}</h5>
-                  <span class="badge bg-primary" style="font-size: 1rem;">${kf.similarity ? kf.similarity.toFixed(1) : 'N/A'}% </span>
+                  <span class="badge bg-primary" style="font-size: 1rem;">${
+                    kf.similarity ? kf.similarity.toFixed(1) : "N/A"
+                  }% </span>
                 </div>
                 <div class="d-flex flex-column gap-2">
                   <div class="d-flex justify-content-between align-items-center">
                     <span class="fw-bold">User Vector:</span>
                     <span class="badge bg-secondary text-wrap" style="max-width: 200px; font-size: 0.75rem; overflow-x: auto;">
-                      ${kf.user_vec ? JSON.stringify(kf.user_vec).substring(0, 50) : 'N/A'}
+                      ${
+                        kf.user_vec
+                          ? JSON.stringify(kf.user_vec).substring(0, 50)
+                          : "N/A"
+                      }
                     </span>
                   </div>
                 </div>
               </div>
             `;
-            prevContainer.appendChild(card);
-            // ใช้ requestAnimationFrame เพื่อทำ animation ที่นุ่มนวล
-            requestAnimationFrame(() => {
-              setTimeout(() => {
-                card.classList.remove('fade-out');
-                card.classList.add('fade-in');
-              }, 50);
-            });
-          };
-          
-          // เริ่มการอัพเดท DOM หลังจากการ์ดพร้อม
-          if (prevContainer.children.length > 0) {
-            const oldCard = prevContainer.children[0];
-            oldCard.classList.add('fade-out');
-            setTimeout(updateDOM, 300);
-          } else {
-            updateDOM();
+              prevContainer.appendChild(card);
+              // ใช้ requestAnimationFrame เพื่อทำ animation ที่นุ่มนวล
+              requestAnimationFrame(() => {
+                setTimeout(() => {
+                  card.classList.remove("fade-out");
+                  card.classList.add("fade-in");
+                }, 50);
+              });
+            };
+
+            // เริ่มการอัพเดท DOM หลังจากการ์ดพร้อม
+            if (prevContainer.children.length > 0) {
+              const oldCard = prevContainer.children[0];
+              oldCard.classList.add("fade-out");
+              setTimeout(updateDOM, 300);
+            } else {
+              updateDOM();
+            }
           }
+        } catch (e) {
+          console.error("fetchStatusOnce error", e);
         }
-
-      } catch (e) {
-        console.error("fetchStatusOnce error", e);
       }
-    }
 
-    setInterval(fetchStatusOnce, 1000);
+      setInterval(fetchStatusOnce, 1000);
 
-    const repsInput = document.getElementById('reps');
-    const startBtn = document.getElementById('start');
-    if (repsInput && startBtn) {
-      repsInput.addEventListener('input', () => {
-        const v = Number(repsInput.value);
-        startBtn.disabled = !(v > 0);
+      const repsInput = document.getElementById("reps");
+      const startBtn = document.getElementById("start");
+      if (repsInput && startBtn) {
+        repsInput.addEventListener("input", () => {
+          const v = Number(repsInput.value);
+          startBtn.disabled = !(v > 0);
+        });
+      }
+
+      document.getElementById("start").addEventListener("click", async () => {
+        const reps = Number(document.getElementById("reps").value) || 1;
+        document.getElementById("start").disabled = true;
+        document.getElementById("reps").disabled = true;
+        // 5-second countdown
+        let count = 5;
+        const cd = document.getElementById("countdown");
+        cd.innerText = `Starting in ${count}...`;
+        while (count > 0) {
+          await new Promise((r) => setTimeout(r, 1000));
+          count -= 1;
+          cd.innerText = count > 0 ? `Starting in ${count}...` : "";
+        }
+        await fetch("/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reps }),
+        });
+        // enable stop
+        document.getElementById("stop").disabled = false;
+        const vid = document.getElementById("trainer_vid");
+        if (sessionStorage.getItem("trainer_enabled") === "true") {
+          vid.style.display = "block";
+          try {
+            vid.play();
+          } catch (e) {}
+        }
       });
-    }
 
-    document.getElementById('start').addEventListener('click', async () => {
-      const reps = Number(document.getElementById('reps').value) || 1;
-      document.getElementById('start').disabled = true;
-      document.getElementById('reps').disabled = true;
-      // 5-second countdown
-      let count = 5;
-      const cd = document.getElementById('countdown');
-      cd.innerText = `Starting in ${count}...`;
-      while (count > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        count -= 1;
-        cd.innerText = count > 0 ? `Starting in ${count}...` : '';
-      }
-      await fetch('/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reps }) });
-      // enable stop
-      document.getElementById('stop').disabled = false;
-      const vid = document.getElementById('trainer_vid');
-      if (sessionStorage.getItem('trainer_enabled') === 'true') {
-        vid.style.display = 'block';
-        try { vid.play(); } catch (e) { }
-      }
-    });
-
-
-    document.getElementById('stop').addEventListener('click', async () => {
-      await fetch('/stop', { method: 'POST' });
-      document.getElementById('stop').disabled = true;
-      document.getElementById('start').disabled = false;
-      document.getElementById('reps').disabled = false;
-      try {
-        const r = await fetch('/summary');
-        const j = await r.json();
-        document.getElementById('summary_total').innerText = j.total;
-        document.getElementById('summary_correct').innerText = j.correct;
-        document.getElementById('summary_incorrect').innerText = j.incorrect;
-        document.getElementById('summary_avg').innerText = (j.average_similarity === null ? 'N/A' : j.average_similarity + '%');
-        const modalEl = document.getElementById('summaryModal');
-        const bs = new bootstrap.Modal(modalEl);
-        bs.show();
-      } catch (e) {
-        console.error("Summary fetch failed", e);
-      }
-    });
-
-    document.getElementById('toggle_trainer').addEventListener('click', async () => {
-      const r = await fetch('/toggle_trainer', { method: 'POST' });
-      const j = await r.json();
-      sessionStorage.setItem('trainer_enabled', j.trainer_enabled ? 'true' : 'false');
-      const vid = document.getElementById('trainer_vid');
-      if (j.trainer_enabled) { vid.style.display = 'block'; try { vid.play() } catch (e) { } }
-      else { try { vid.pause() } catch (e) { } vid.style.display = 'none'; }
-    });
-
-    document.getElementById('enable_audio').addEventListener('click', async () => {
-      const btn = document.getElementById('enable_audio');
-      try {
-        if (await window.enableAudio()) {
-          btn.classList.remove('btn-outline-secondary');
-          btn.classList.add('btn-success');
-          btn.textContent = 'Audio Enabled';
+      document.getElementById("stop").addEventListener("click", async () => {
+        await fetch("/stop", { method: "POST" });
+        document.getElementById("stop").disabled = true;
+        document.getElementById("start").disabled = false;
+        document.getElementById("reps").disabled = false;
+        try {
+          const r = await fetch("/summary");
+          const j = await r.json();
+          document.getElementById("summary_total").innerText = j.total;
+          document.getElementById("summary_correct").innerText = j.correct;
+          document.getElementById("summary_incorrect").innerText = j.incorrect;
+          document.getElementById("summary_avg").innerText =
+            j.average_similarity === null ? "N/A" : j.average_similarity + "%";
+          const modalEl = document.getElementById("summaryModal");
+          const bs = new bootstrap.Modal(modalEl);
+          bs.show();
+        } catch (e) {
+          console.error("Summary fetch failed", e);
         }
-      } catch (e) {
-        console.error('Failed to enable audio:', e);
-        btn.classList.remove('btn-outline-secondary');
-        btn.classList.add('btn-danger');
-        btn.textContent = 'Audio Failed';
-      }
-    });
+      });
 
-    (async () => {
-      try {
-        const r = await fetch('/trainer_exists');
-        const j = await r.json();
-        if (!j.exists) document.getElementById('trainer_alert').classList.remove('d-none');
-      } catch (e) {
-        document.getElementById('trainer_alert').classList.remove('d-none');
-      }
-      fetchStatusOnce();
-    })();
-  </script>
+      document
+        .getElementById("toggle_trainer")
+        .addEventListener("click", async () => {
+          const r = await fetch("/toggle_trainer", { method: "POST" });
+          const j = await r.json();
+          sessionStorage.setItem(
+            "trainer_enabled",
+            j.trainer_enabled ? "true" : "false"
+          );
+          const vid = document.getElementById("trainer_vid");
+          if (j.trainer_enabled) {
+            vid.style.display = "block";
+            try {
+              vid.play();
+            } catch (e) {}
+          } else {
+            try {
+              vid.pause();
+            } catch (e) {}
+            vid.style.display = "none";
+          }
+        });
 
-</body>
+      document
+        .getElementById("enable_audio")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("enable_audio");
+          try {
+            if (await window.enableAudio()) {
+              btn.classList.remove("btn-outline-secondary");
+              btn.classList.add("btn-success");
+              btn.textContent = "Audio Enabled";
+            }
+          } catch (e) {
+            console.error("Failed to enable audio:", e);
+            btn.classList.remove("btn-outline-secondary");
+            btn.classList.add("btn-danger");
+            btn.textContent = "Audio Failed";
+          }
+        });
+
+      (async () => {
+        try {
+          const r = await fetch("/trainer_exists");
+          const j = await r.json();
+          if (!j.exists)
+            document.getElementById("trainer_alert").classList.remove("d-none");
+        } catch (e) {
+          document.getElementById("trainer_alert").classList.remove("d-none");
+        }
+        fetchStatusOnce();
+      })();
+    </script>
+  </body>
 </html>
