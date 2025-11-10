@@ -617,7 +617,8 @@ class ProcessFrame:
                                     user_vec=user_vec_data,
                                     depth=depth_text,
                                     depth_text=depth_text,
-                                    depth_value=current_depth
+                                    depth_value=current_depth,
+                                    rounds_count=rounds
                                 )
                         except Exception as _e:
                             pass

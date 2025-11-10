@@ -41,7 +41,6 @@ user_data = {
     "reps": []
 }
 
-
 def _similarity_cb(val):
     try:
         if val is None:
@@ -49,12 +48,15 @@ def _similarity_cb(val):
 
         if isinstance(val, dict):
             similarity = float(val.get("similarity", 0))
+            #confused
             rep_number = val.get("rep_number")
             timestamp = val.get("timestamp", time.time())
         else:
             similarity = float(val)
             rep_number = session.get("done_reps", 0) + 1
             timestamp = time.time()
+
+        print(f"⭐ rep_number: {rep_number}")
             
         if isinstance(val, dict):
             depth_text = val.get('depth')
@@ -105,44 +107,31 @@ def _similarity_cb(val):
         user_data.setdefault("reps", []).append(record)
         save_user_data()
 
-        if processor.state_tracker.get('COMPLETE_STATE', 0) == 1:
-            state['play_sound'] = True
-            try:
-                latest_img = None
-                for _ in range(6):
-                    if os.path.exists(status_path):
-                        try:
-                            with open(status_path, 'r', encoding='utf-8') as f:
-                                sd = json.load(f)
-                            if sd.get('keyframes'):
-                                latest = sd['keyframes'][-1]
-                                latest_img = latest.get('user_image')
-                                break
-                        except Exception:
-                            pass
-                    time.sleep(0.1)
-                if latest_img:
-                    record['user_image'] = latest_img
-            except Exception as e:
-                print('Error polling status.json for latest keyframe:', e)
+        try:
+            with state['lock']:
+                state['last_depth_text'] = depth_text
+                state['last_depth_value'] = depth_idx
+                state['play_sound'] = True
+        except Exception:
+            pass
 
-        # เก็บลง session
-        session.setdefault('keyframes', []).append(record)
-
-        # เก็บลง database
-        user_data["reps"].append(record)
-        print(f"user_data['rep']: {user_data['reps']}")
+        if session["done_reps"] >= session.get("target_reps", 0):
+            session["running"] = False
+            processor.state_tracker["running"] = False
 
     except Exception as e:
         print("Error in similarity callback:", e)
 
 
-processor = ProcessFrame(thresholds=thresholds, flip_frame=True, similarity_callback=_similarity_cb)
-
+processor = ProcessFrame(thresholds=thresholds, flip_frame=False, similarity_callback=_similarity_cb)
 
 def gen_frames():
+    s_gf = time.time()  
     while True:
         success, frame = cap.read()
+
+        frame = cv2.flip(frame, 1)
+
         if not success:
             break
         if session.get('running'):
@@ -154,8 +143,12 @@ def gen_frames():
         with state['lock']:
             sim = state.get('last_similarity')
             # put text
-        if sim is not None and session['running'] == True:
+
+        elasped_s_gf = time.time() - s_gf
+        if sim is not None and session['running'] == True and elasped_s_gf>=1.0:
             print(f"Current similarity: {sim}%")
+            s_gf = time.time()
+
         ret, buffer = cv2.imencode('.jpg', frame)
         frame_bytes = buffer.tobytes()
         yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
