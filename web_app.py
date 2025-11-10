@@ -33,7 +33,7 @@ user_camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 user_camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 thresholds = get_thresholds(user_camera_width, user_camera_height)
 
-CORRECT_THRESH = 80.0
+CORRECT_THRESH =85.0
 
 USER_DATA_PATH = os.path.join('static', 'user_data.json')
 
@@ -97,7 +97,7 @@ def _similarity_cb(val):
             "depth_value": depth_idx,
             "user_vec": user_vec,
             "timestamp": int(timestamp * 1000),
-            "rep_number": rep_number + 1,
+            "rep_number": rep_number,
             "isCorrect": bool(is_correct)
         }
 
@@ -213,7 +213,7 @@ def start_session():
                     elif isinstance(val, (int, float, bool)):
                         tracker[key] = 0
                     else:
-                        tracker[key] = type(val)()  # reset ด้วย default type()
+                        tracker[key] = type(val)() 
 
             tracker["rounds_count"] = 0
             tracker["selected_frame_count"] = 0
@@ -378,7 +378,7 @@ def summary():
     total = len(kfs)
     sims = [float(k.get('similarity') or 0.0) for k in kfs]
     avg = round(statistics.mean(sims), 2) if sims else None
-    CORRECT_THRESH = 80.0
+    CORRECT_THRESH = 85.0
     correct = sum(1 for s in sims if s >= CORRECT_THRESH)
     incorrect = total - correct
     

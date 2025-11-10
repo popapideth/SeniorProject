@@ -303,6 +303,7 @@
       let displayedUserVec = "";
       let currentCardKey = null;
       let lastCardTimestamp = 0;
+      let autoSummaryShown = false;
 
       async function fetchStatusOnce() {
         try {
@@ -386,9 +387,39 @@
 
               if (completedReps >= totalReps && totalReps > 0) {
                 console.log("Playing all complete sound");
-                if (allCompleteSound) {
-                  await allCompleteSound.play();
-                  fetch("/stop", { method: "POST" });
+                if (!autoSummaryShown) {
+                  try {
+                    if (allCompleteSound) {
+                      await allCompleteSound.play();
+                    }
+                  } catch (e) {
+                    console.error("Error playing all-complete sound", e);
+                  }
+
+                  try {
+                    await fetch("/stop", { method: "POST" });
+                    const rsum = await fetch("/summary");
+                    if (rsum.ok) {
+                      const j = await rsum.json();
+                      document.getElementById("summary_total").innerText =
+                        j.total;
+                      document.getElementById("summary_correct").innerText =
+                        j.correct;
+                      document.getElementById("summary_incorrect").innerText =
+                        j.incorrect;
+                      document.getElementById("summary_avg").innerText =
+                        j.average_similarity === null
+                          ? "N/A"
+                          : j.average_similarity + "%";
+                      const modalEl = document.getElementById("summaryModal");
+                      const bs = new bootstrap.Modal(modalEl);
+                      bs.show();
+                    }
+                  } catch (e) {
+                    console.error("Auto-show summary failed", e);
+                  }
+
+                  autoSummaryShown = true;
                 }
               }
             } catch (e) {
@@ -581,7 +612,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reps }),
         });
-        // enable stop
+        autoSummaryShown = false;
         document.getElementById("stop").disabled = false;
         const vid = document.getElementById("trainer_vid");
         if (sessionStorage.getItem("trainer_enabled") === "true") {
