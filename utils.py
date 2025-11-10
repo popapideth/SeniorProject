@@ -317,3 +317,51 @@ def scaledTo(width, height):
     display_scale_y = new_h / old_h
 
     return display_scale_x, display_scale_y
+
+
+
+#---------------------- Dusit function>
+import time as _time
+
+KEYFRAME_DIR = os.path.join("static", "keyframes")
+STATUS_JSON = os.path.join("static", "status.json")
+
+def ensure_dir(path):
+    os.makedirs(path, exist_ok=True)
+
+def save_keyframe_image(frame_bgr, role="user"):
+    ensure_dir(KEYFRAME_DIR)
+    ts = int(_time.time() * 1000)
+    fname = f"{role}_{ts}.jpg"
+    full_path = os.path.join(KEYFRAME_DIR, fname)
+    import cv2
+    cv2.imwrite(full_path, frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    return "/" + full_path.replace(os.path.sep, "/")
+
+def append_status_entry(user_image_url=None, similarity=None, rounds_count=None, user_vec=None, **kwargs):
+    ensure_dir(os.path.dirname(STATUS_JSON))
+    status = {"keyframes": [], "rounds_count": 0}
+    try:
+        if os.path.exists(STATUS_JSON):
+            with open(STATUS_JSON, "r", encoding="utf-8") as fh:
+                status = json.load(fh)
+    except Exception:
+        status = {"keyframes": [], "rounds_count": 0}
+
+    entry = {
+        "timestamp": int(_time.time() * 1000),
+        "user_image": user_image_url,
+        "similarity": float(similarity) if similarity is not None else None,
+        "user_vec": user_vec,
+        "rounds_count": int(rounds_count) if rounds_count is not None else int(status.get("rounds_count", 0)),
+    }
+    # เพิ่ม field อื่นๆ ที่ส่งเข้ามาผ่าน kwargs
+    entry.update(kwargs)
+
+    status.setdefault("keyframes", []).append(entry)
+    status["rounds_count"] = entry["rounds_count"]
+    if len(status["keyframes"]) > 200:
+        status["keyframes"] = status["keyframes"][-200:]
+    with open(STATUS_JSON, "w", encoding="utf-8") as fh:
+        json.dump(status, fh, ensure_ascii=False)
+    return status 

@@ -106,6 +106,7 @@ def _similarity_cb(val):
         session.setdefault("keyframes", []).append(record)
         user_data.setdefault("reps", []).append(record)
         save_user_data()
+        print(f"user_data['rep']: {user_data['reps']}")
 
         try:
             with state['lock']:
