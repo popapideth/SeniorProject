@@ -413,16 +413,12 @@ def get_keyframes():
                 if img and img == last_img:
                     continue
 
-                # กำหนด rep number ถ้าไม่มี
                 if 'rep_number' not in kf:
                     kf['rep_number'] = len(cleaned) + 1
 
-                # ถ prefere ใช้ค่าจาก processor.get_depth() ก่อน (ถ้ามี)
-                # ถ้า processor ไม่มีค่า ให้ fallback ไปใช้ค่าเก่าที่บันทึกใน keyframe
                 depth_value = depth_idx if depth_idx is not None else kf.get('depth')
                 depth_str = depth_text if (depth_text is not None and depth_text != "Unknown") else kf.get('depth_text')
 
-                # เก็บเฉพาะค่าที่มีความหมาย (อย่าเซฟ None หรือ "Unknown")
                 if depth_value is not None:
                     kf['depth'] = depth_value
                 else:

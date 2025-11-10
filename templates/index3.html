@@ -333,8 +333,6 @@
                   console.log("Updated main keyframe image:", baseImagePath);
                 }
               }
-
-              // ไม่ต้องอัพเดท vector ที่นี่ จะใช้จาก status แทน
             }
           }
 
@@ -445,7 +443,6 @@
               );
               const currentItem = previous[currentPage - 1];
 
-              // ใช้ requestAnimationFrame เพื่อทำให้การอัพเดทนุ่มนวล
               requestAnimationFrame(() => {
                 updateKeyframeDisplay(previous, currentPage, data);
               });
@@ -455,7 +452,6 @@
             }
           }
 
-          // เก็บค่าการ์ดที่แสดงอยู่ปัจจุบัน
           let lastDisplayedCard = null;
 
           function updateKeyframeDisplay(items, page) {
@@ -470,7 +466,6 @@
               return;
             }
 
-            // Ensure valid page number
             page = Math.max(1, Math.min(page, items.length));
             const kf = items[page - 1];
 
@@ -502,11 +497,9 @@
             currentCardKey = newCardKey;
             lastCardTimestamp = now;
 
-            // อัพเดทการ์ดอย่างนุ่มนวล
             const card = document.createElement("div");
             card.className = "card w-100 fade-out";
 
-            // สร้างการ์ดใหม่แต่ยังไม่แสดง
             const updateDOM = () => {
               prevContainer.innerHTML = "";
               card.innerHTML = `
@@ -538,7 +531,6 @@
               </div>
             `;
               prevContainer.appendChild(card);
-              // ใช้ requestAnimationFrame เพื่อทำ animation ที่นุ่มนวล
               requestAnimationFrame(() => {
                 setTimeout(() => {
                   card.classList.remove("fade-out");
@@ -547,7 +539,6 @@
               });
             };
 
-            // เริ่มการอัพเดท DOM หลังจากการ์ดพร้อม
             if (prevContainer.children.length > 0) {
               const oldCard = prevContainer.children[0];
               oldCard.classList.add("fade-out");
