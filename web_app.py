@@ -123,7 +123,7 @@ def _similarity_cb(val):
         print("Error in similarity callback:", e)
 
 
-processor = ProcessFrame(thresholds=thresholds, flip_frame=False, similarity_callback=_similarity_cb)
+processor = ProcessFrame(thresholds=thresholds, similarity_callback=_similarity_cb)
 
 def gen_frames():
     s_gf = time.time()  

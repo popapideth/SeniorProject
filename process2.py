@@ -61,9 +61,8 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None,
 
 class ProcessFrame:
     
-    def __init__(self, thresholds, flip_frame = False, similarity_callback=None):
+    def __init__(self, thresholds, similarity_callback=None):
         self.st = time.time()
-        self.flip_frame = flip_frame
             
         # Define text properties
         self.fontFace_ptf = cv2.FONT_HERSHEY_SIMPLEX
@@ -224,11 +223,7 @@ class ProcessFrame:
         return f's{knee}' if knee else None
 
     def process(self, frame: np.array, pose):
-        frame_height, frame_width, _ = frame.shape
-
-        if self.flip_frame:
-            frame = cv2.flip(frame, 1)
-        
+        frame_height, frame_width, _ = frame.shape    
 
         # Recolor image
         image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
