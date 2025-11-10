@@ -1,77 +1,62 @@
 {
   "reps": [
     {
-      "user_image": "/static/keyframes/frame_1762763067922.jpg",
-      "similarity": 77.5,
+      "user_image": "/static/keyframes/frame_1762767171397.jpg",
+      "similarity": 77.64,
       "depth": "Improper Squat",
       "depth_value": 4,
       "user_vec": [
-        59.0,
-        29.0,
-        28.0,
-        18.0
+        50.0,
+        17.0,
+        42.0,
+        38.0
       ],
-      "timestamp": 1762763067922,
-      "rep_number": 0,
-      "isCorrect": false
-    },
-    {
-      "user_image": "/static/keyframes/frame_1762763070616.jpg",
-      "similarity": 76.53,
-      "depth": "Improper Squat",
-      "depth_value": 4,
-      "user_vec": [
-        40.0,
-        21.0,
-        38.0,
-        28.0
-      ],
-      "timestamp": 1762763070616,
+      "timestamp": 1762767171397,
       "rep_number": 1,
       "isCorrect": false
     },
     {
-      "user_image": "/static/keyframes/frame_1762763241321.jpg",
-      "similarity": 77.92,
-      "depth": "Improper Squat",
-      "depth_value": 4,
+      "user_image": "/static/keyframes/frame_1762767174446.jpg",
+      "similarity": 80.42,
+      "depth": "Quarter Squat (45°)",
+      "depth_value": 0,
       "user_vec": [
-        38.0,
-        27.0,
-        44.0,
-        28.0
+        54.0,
+        23.0,
+        52.0,
+        38.0
       ],
-      "timestamp": 1762763241321,
+      "timestamp": 1762767174446,
       "rep_number": 2,
       "isCorrect": false
     },
     {
-      "user_image": "/static/keyframes/frame_1762763243443.jpg",
-      "similarity": 72.5,
-      "depth": "Improper Squat",
-      "depth_value": 4,
+      "user_image": "/static/keyframes/frame_1762767177682.jpg",
+      "similarity": 86.81,
+      "depth": "Half Squat (60°)",
+      "depth_value": 1,
       "user_vec": [
-        15.0,
-        16.0,
-        38.0,
-        29.0
+        75.0,
+        42.0,
+        62.0,
+        36.0
       ],
-      "timestamp": 1762763243443,
+      "timestamp": 1762767177682,
       "rep_number": 3,
-      "isCorrect": false
+      "isCorrect": true
     },
     {
-      "user_image": "/static/keyframes/frame_1762763245293.jpg",
-      "similarity": 70.28,
-      "depth": "Improper Squat",
-      "depth_value": 4,
+      "user_image": "/static/keyframes/frame_1762767181393.jpg",
+      "similarity": 81.94,
+      "depth": "Quarter Squat (45°)",
+      "depth_value": 0,
       "user_vec": [
-        7.0,
-        13.0,
-        30.0,
-        32.0
+        66.0,
+        41.0,
+        45.0,
+        18.0
       ],
-      "timestamp": 1762763245293,
+      "timestamp": 1762767181393,
       "rep_number": 4,
       "isCorrect": false
     }

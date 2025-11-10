@@ -61,7 +61,7 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None,
 
 class ProcessFrame:
     
-    def __init__(self, thresholds, flip_frame = False, similarity_callback=None):
+    def __init__(self, thresholds, similarity_callback=None):
         self.st = time.time()
         self.flip_frame = flip_frame
             
@@ -211,7 +211,6 @@ class ProcessFrame:
         elif state == 's3':
             if (state not in self.state_tracker['state_seq']) and 's2' in self.state_tracker['state_seq']:
                 self.state_tracker['state_seq'].append(state)
-
 
     def get_state(self, hip_angle, knee_angle, thresholds):
         knee = None
