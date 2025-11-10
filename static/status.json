@@ -1,0 +1,60 @@
+{
+    "keyframes": [
+        {
+            "timestamp": 1762513281697,
+            "user_image": "/static/keyframes/user_1762513281691.jpg",
+            "similarity": 88.47222222222223,
+            "user_vec": [
+                101.0,
+                21.0,
+                61.0,
+                34.0
+            ]
+        },
+        {
+            "timestamp": 1762513285095,
+            "user_image": "/static/keyframes/user_1762513285093.jpg",
+            "similarity": 91.66666666666667,
+            "user_vec": [
+                108.0,
+                23.0,
+                74.0,
+                33.0
+            ]
+        },
+        {
+            "timestamp": 1762513289112,
+            "user_image": "/static/keyframes/user_1762513289109.jpg",
+            "similarity": 92.91666666666667,
+            "user_vec": [
+                111.0,
+                26.0,
+                76.0,
+                32.0
+            ]
+        },
+        {
+            "timestamp": 1762513292744,
+            "user_image": "/static/keyframes/user_1762513292741.jpg",
+            "similarity": 93.61111111111111,
+            "user_vec": [
+                113.0,
+                31.0,
+                77.0,
+                35.0
+            ]
+        },
+        {
+            "timestamp": 1762513296425,
+            "user_image": "/static/keyframes/user_1762513296422.jpg",
+            "similarity": 92.91666666666669,
+            "user_vec": [
+                111.0,
+                26.0,
+                79.0,
+                35.0
+            ]
+        }
+    ],
+    "rounds_count": 5
+}
