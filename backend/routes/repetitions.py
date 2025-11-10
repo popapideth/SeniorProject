@@ -95,7 +95,7 @@ def readRepetiotionsDetailById(id):
     response = make_response(json.dumps({"data": result}, ensure_ascii=False, indent=2))
     response.headers["Content-Type"] = "application/json"
     return response
-@repetitions_bp.route('/createRepetition', methods = ['POST'])
+@repetitions_bp.route('/createrepetition', methods = ['POST'])
 def createRepetition():
     data = request.get_json()
     session_id = data.get('session_id')
@@ -119,7 +119,7 @@ def createRepetition():
     conn.close()
 
     return jsonify({'message' : 'repetition created success'}, 201)
-@repetitions_bp.route('/createRepetitionWithLandmarks', methods=['POST'])
+@repetitions_bp.route('/createrepetitionwithlandmarks', methods=['POST'])
 def createRepetitionWithLandmarks():
     try:
         data = request.get_json()
