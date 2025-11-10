@@ -61,7 +61,7 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None,
 
 class ProcessFrame:
     
-    def __init__(self, thresholds, flip_frame = False, similarity_callback=None):
+    def __init__(self, thresholds, similarity_callback=None):
         self.st = time.time()
         self.flip_frame = flip_frame
             
@@ -211,7 +211,6 @@ class ProcessFrame:
         elif state == 's3':
             if (state not in self.state_tracker['state_seq']) and 's2' in self.state_tracker['state_seq']:
                 self.state_tracker['state_seq'].append(state)
-
 
     def get_state(self, hip_angle, knee_angle, thresholds):
         knee = None
@@ -477,15 +476,19 @@ class ProcessFrame:
                         
                         print(f"Keyframe: {self.state_tracker['keyframe']['angles']}")
                         
-                        #cosine 127,39,98,32, 
+                        #cosine 127,39,98,32
                         # เก็บค่า trainer vector สำหรับเปรียบเทียบ
+                        w1 = 0.1
+                        w2 = 0.2
+                        w3 = 0.6
+                        w4 = 0.1
                         trainer_vec = np.array([127, 39, 98, 32], dtype=float)
                         
                         # สร้าง user vector จากมุมต่างๆ
                         user_vec = np.array([
                             self.state_tracker['keyframe']['angles']['shoulder'],
                             self.state_tracker['keyframe']['angles']['hip'],
-                            self.state_tracker['keyframe']['angles']['knee'],
+                            self.state_tracker['keyframe']['angles']['knee'], 
                             self.state_tracker['keyframe']['angles']['ankle']
                         ], dtype=float)
                         
@@ -613,6 +616,7 @@ class ProcessFrame:
                                 user_vec_data = self.state_tracker.get('latest_user_vec')
                                 append_status_entry(
                                     user_image_url=user_img_url,
+                                    rounds_count=rounds,
                                     similarity=sim_val,
                                     user_vec=user_vec_data,
                                     depth=depth_text,
@@ -622,7 +626,7 @@ class ProcessFrame:
                                 )
                         except Exception as _e:
                             pass
-                        # --- end auto-save ---
+                    
 
                         print('---------------------------------------')
 

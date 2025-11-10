@@ -303,6 +303,7 @@
       let displayedUserVec = "";
       let currentCardKey = null;
       let lastCardTimestamp = 0;
+      let autoSummaryShown = false;
 
       async function fetchStatusOnce() {
         try {
@@ -333,8 +334,6 @@
                   console.log("Updated main keyframe image:", baseImagePath);
                 }
               }
-
-              // ไม่ต้องอัพเดท vector ที่นี่ จะใช้จาก status แทน
             }
           }
 
@@ -388,9 +387,39 @@
 
               if (completedReps >= totalReps && totalReps > 0) {
                 console.log("Playing all complete sound");
-                if (allCompleteSound) {
-                  await allCompleteSound.play();
-                  fetch("/stop", { method: "POST" });
+                if (!autoSummaryShown) {
+                  try {
+                    if (allCompleteSound) {
+                      await allCompleteSound.play();
+                    }
+                  } catch (e) {
+                    console.error("Error playing all-complete sound", e);
+                  }
+
+                  try {
+                    await fetch("/stop", { method: "POST" });
+                    const rsum = await fetch("/summary");
+                    if (rsum.ok) {
+                      const j = await rsum.json();
+                      document.getElementById("summary_total").innerText =
+                        j.total;
+                      document.getElementById("summary_correct").innerText =
+                        j.correct;
+                      document.getElementById("summary_incorrect").innerText =
+                        j.incorrect;
+                      document.getElementById("summary_avg").innerText =
+                        j.average_similarity === null
+                          ? "N/A"
+                          : j.average_similarity + "%";
+                      const modalEl = document.getElementById("summaryModal");
+                      const bs = new bootstrap.Modal(modalEl);
+                      bs.show();
+                    }
+                  } catch (e) {
+                    console.error("Auto-show summary failed", e);
+                  }
+
+                  autoSummaryShown = true;
                 }
               }
             } catch (e) {
@@ -445,7 +474,6 @@
               );
               const currentItem = previous[currentPage - 1];
 
-              // ใช้ requestAnimationFrame เพื่อทำให้การอัพเดทนุ่มนวล
               requestAnimationFrame(() => {
                 updateKeyframeDisplay(previous, currentPage, data);
               });
@@ -455,7 +483,6 @@
             }
           }
 
-          // เก็บค่าการ์ดที่แสดงอยู่ปัจจุบัน
           let lastDisplayedCard = null;
 
           function updateKeyframeDisplay(items, page) {
@@ -470,7 +497,6 @@
               return;
             }
 
-            // Ensure valid page number
             page = Math.max(1, Math.min(page, items.length));
             const kf = items[page - 1];
 
@@ -502,11 +528,9 @@
             currentCardKey = newCardKey;
             lastCardTimestamp = now;
 
-            // อัพเดทการ์ดอย่างนุ่มนวล
             const card = document.createElement("div");
             card.className = "card w-100 fade-out";
 
-            // สร้างการ์ดใหม่แต่ยังไม่แสดง
             const updateDOM = () => {
               prevContainer.innerHTML = "";
               card.innerHTML = `
@@ -538,7 +562,6 @@
               </div>
             `;
               prevContainer.appendChild(card);
-              // ใช้ requestAnimationFrame เพื่อทำ animation ที่นุ่มนวล
               requestAnimationFrame(() => {
                 setTimeout(() => {
                   card.classList.remove("fade-out");
@@ -547,7 +570,6 @@
               });
             };
 
-            // เริ่มการอัพเดท DOM หลังจากการ์ดพร้อม
             if (prevContainer.children.length > 0) {
               const oldCard = prevContainer.children[0];
               oldCard.classList.add("fade-out");
@@ -590,7 +612,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reps }),
         });
-        // enable stop
+        autoSummaryShown = false;
         document.getElementById("stop").disabled = false;
         const vid = document.getElementById("trainer_vid");
         if (sessionStorage.getItem("trainer_enabled") === "true") {
