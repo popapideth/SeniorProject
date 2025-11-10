@@ -33,13 +33,13 @@ user_camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 user_camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 thresholds = get_thresholds(user_camera_width, user_camera_height)
 
-CORRECT_THRESH = 80.0
+user_data = {
+    "reps": [],
+}
+
+CORRECT_THRESH =85.0
 
 USER_DATA_PATH = os.path.join('static', 'user_data.json')
-
-user_data = {
-    "reps": []
-}
 
 def _similarity_cb(val):
     try:
@@ -100,7 +100,7 @@ def _similarity_cb(val):
             "user_vec": user_vec,
             "timestamp": int(timestamp * 1000),
             "rep_number": rep_number + 1,
-            "isCorrect": bool(is_correct)
+            "isCorrect": bool(is_correct),
         }
 
         session.setdefault("keyframes", []).append(record)
@@ -132,7 +132,7 @@ def gen_frames():
         success, frame = cap.read()
 
         frame = cv2.flip(frame, 1)
-
+        
         if not success:
             break
         if session.get('running'):
@@ -223,7 +223,7 @@ def start_session():
                     elif isinstance(val, (int, float, bool)):
                         tracker[key] = 0
                     else:
-                        tracker[key] = type(val)()  # reset ด้วย default type()
+                        tracker[key] = type(val)() 
 
             tracker["rounds_count"] = 0
             tracker["selected_frame_count"] = 0
@@ -368,9 +368,13 @@ def trainer_exists():
 @app.route('/get_reps')
 def get_reps():
     try:
+        summary = calculate_summary()
         return jsonify({
             'reps': user_data.get('reps', []),
-            'total': len(user_data.get('reps', []))
+            'total': len(user_data.get('reps', [])),
+            'average': summary.get('average', None),
+            'correct': summary.get('correct', 0),
+            'incorrect': summary.get('incorrect', 0),
         })
     except Exception as e:
         print('Error in get_reps endpoint:', e)
@@ -386,20 +390,11 @@ def stop_session_route():
 ###################เก็บลง database ## for rep in user_data["reps"]###########
 @app.route('/summary')
 def summary():
-    kfs = session.get('keyframes', []) or []
-    total = len(kfs)
-    sims = [float(k.get('similarity') or 0.0) for k in kfs]
-    avg = round(statistics.mean(sims), 2) if sims else None
-    CORRECT_THRESH = 80.0
-    correct = sum(1 for s in sims if s >= CORRECT_THRESH)
-    incorrect = total - correct
-
     return jsonify({
-        'total': total,
-        'correct': correct,
-        'incorrect': incorrect,
-        'average_similarity': avg,
-        'threshold': CORRECT_THRESH
+        'total': calculate_summary()['total'],
+        'correct': calculate_summary()['correct'],
+        'incorrect': calculate_summary()['incorrect'],
+        'average_similarity': calculate_summary()['average'],
     })
 
 @app.route('/get_keyframes')
@@ -457,7 +452,21 @@ def get_keyframes():
             'total_reps': 0,
             'rounds_count': 0
         })
-
+        
+def calculate_summary():
+    kfs = session.get('keyframes', []) or []
+    total = len(kfs)
+    sims = [float(k.get('similarity') or 0.0) for k in kfs]
+    avg = round(statistics.mean(sims), 2) if sims else None
+    CORRECT_THRESH = 85.0
+    correct = sum(1 for s in sims if s >= CORRECT_THRESH)
+    incorrect = total - correct
+    return {
+        'total': total,
+        'correct': correct,
+        'incorrect': incorrect,
+        'average': avg,
+    }
 
 
 def load_user_data():
