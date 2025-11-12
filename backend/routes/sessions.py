@@ -180,15 +180,7 @@ def createSessionWithRepetition():
         avg_ankle_angle = data.get('avg_ankle_angle',0)
         created_time = data.get('created_time')
         # repetitionData
-        session_id = data.get('session_id')
-        reps_number = data.get('reps_number',0)
-        iscorrect = data.get('iscorrect')
-        shoulder_angle = data.get('shoulder_angle',0)
-        hip_angle = data.get('hip_angle',0)
-        knee_angle = data.get('knee_angle',0)
-        ankle_angle = data.get('ankle_angle',0)
-        accuracy_percent = data.get('accuracy_percent',0)
-        created_time = data.get('created_time')
+        repetitions = data.get("repetitions", [])
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -199,8 +191,28 @@ def createSessionWithRepetition():
         cursor.execute(insertSession_query, (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,created_time))
 
         session_id = cursor.fetchone()[0]
-        insertRepetition_query = '''INSERT INTO public.repetitions
-        (session_id,reps_numbe,iscorrect,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+        for rep in repetitions:
+            insertRepetition_query = '''INSERT INTO public.repetitions
+            (session_id,reps_number,iscorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+            cursor.execute(insertRepetition_query,
+                session_id,
+                rep.get('reps_number'),
+                rep.get('iscorrect'),
+                rep.get('depth_value'),
+                rep.get('shoulder_angle'),
+                rep.get('hip_angle'),
+                rep.get('knee_angle'),
+                rep.get('ankle_angle'),
+                rep.get('accuracy_percent'),
+                rep.get('created_time'),
+            )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Repetition with landmarks created success','repetition_id': repetition_id }, 201)
+    except Exception as e:
+        return  jsonify({'error': str(e)}), 500
             
 
