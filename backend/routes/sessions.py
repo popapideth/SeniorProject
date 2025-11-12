@@ -2,6 +2,7 @@ from flask import Flask, Blueprint,render_template, request, redirect, url_for,j
 from backend.models.db_connection import get_db_connection
 from collections import OrderedDict
 import json
+import datetime
 
 sessions_bp = Blueprint('sessions',__name__)
 
@@ -162,3 +163,44 @@ def createSession():
     conn.close()
 
     return jsonify({'message' : 'session created success'}, 201)
+
+sessions_bp.route('/createsessionwithrepetition' ,methods=['POST'])
+def createSessionWithRepetition():
+    try:
+        data = request.get_json()
+        # sessionData 
+        exercise_name = data.get('exercise_name')
+        total_count = data.get('total_count',0)
+        correct_count = data.get('correct_count',0)
+        incorrect_count = data.get('incorrect_count',0)
+        avg_Accuracy_percent = data.get('avg_Accuracy_percent',0)
+        avg_shoulder_angle = data.get('avg_shoulder_angle',0)
+        avg_hip_angle = data.get('avg_hip_angle',0)
+        avg_knee_angle = data.get('avg_knee_angle',0)
+        avg_ankle_angle = data.get('avg_ankle_angle',0)
+        created_time = data.get('created_time')
+        # repetitionData
+        session_id = data.get('session_id')
+        reps_number = data.get('reps_number',0)
+        iscorrect = data.get('iscorrect')
+        shoulder_angle = data.get('shoulder_angle',0)
+        hip_angle = data.get('hip_angle',0)
+        knee_angle = data.get('knee_angle',0)
+        ankle_angle = data.get('ankle_angle',0)
+        accuracy_percent = data.get('accuracy_percent',0)
+        created_time = data.get('created_time')
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        insertSession_query = '''INSERT INTO public.sessions
+        (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,created_time)
+        VALUES (%s,%s,%s,%s,%s,%s,)
+        RETURNING session_id'''
+        cursor.execute(insertSession_query, (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,created_time))
+
+        session_id = cursor.fetchone()[0]
+        insertRepetition_query = '''INSERT INTO public.repetitions
+        (session_id,reps_numbe,iscorrect,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+            
+

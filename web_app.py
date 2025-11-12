@@ -7,6 +7,8 @@ import os
 from process2 import ProcessFrame
 from threshold import get_mediapipe_pose, get_thresholds
 import statistics
+# backend
+import datetime
 
 app = Flask(__name__)
 
@@ -90,18 +92,6 @@ def _similarity_cb(val):
         is_correct = sim_val >= CORRECT_THRESH
 
         record = {
-<<<<<<< HEAD
-            'user_image': f"/static/keyframes/{filename}",  # ใส่ path แบบเต็ม
-            'similarity': sim_val,
-            'depth': depth_text,  # เก็บประเภทของ squat เป็นข้อความ
-            'depth_value': depth_value,  # เก็บหมายเลขประเภท (0-4)
-            'angle': depth,  # เก็บค่าองศาดิบ
-            'user_vec': user_vec,
-            'timestamp': int(timestamp * 1000),
-            'rep_number': rep_number+1,
-            'correct': is_correct,
-            'incorrect': not is_correct
-=======
             "user_image": f"/static/keyframes/frame_{int(timestamp * 1000)}.jpg",
             "similarity": sim_val,
             "depth": depth_text,
@@ -109,47 +99,13 @@ def _similarity_cb(val):
             "user_vec": user_vec,
             "timestamp": int(timestamp * 1000),
             "rep_number": rep_number + 1,
-<<<<<<< HEAD
-            "isCorrect": bool(is_correct)
->>>>>>> origin/cordelia
-=======
             "isCorrect": bool(is_correct),
->>>>>>> origin/cordelia
         }
 
         session.setdefault("keyframes", []).append(record)
         user_data.setdefault("reps", []).append(record)
         save_user_data()
 
-<<<<<<< HEAD
-        if processor.state_tracker.get('COMPLETE_STATE', 0) == 1:
-            state['play_sound'] = True
-            try:
-                latest_img = None
-                for _ in range(6):
-                    if os.path.exists(status_path):
-                        try:
-                            with open(status_path, 'r', encoding='utf-8') as f:
-                                sd = json.load(f)
-                            if sd.get('keyframes'):
-                                latest = sd['keyframes'][-1]
-                                latest_img = latest.get('user_image')
-                                break
-                        except Exception:
-                            pass
-                    time.sleep(0.1)
-                if latest_img:
-                    record['user_image'] = latest_img
-            except Exception as e:
-                print('Error polling status.json for latest keyframe:', e)
-
-        # เก็บลง session
-        session.setdefault('keyframes', []).append(record)
-
-        # เก็บลง database มุมของแต่ละจุด 4 จุด
-        user_data["reps"].append(record)
-        print(f"user_data['rep']: {user_data['reps']}")
-=======
         try:
             with state['lock']:
                 state['last_depth_text'] = depth_text
@@ -161,7 +117,6 @@ def _similarity_cb(val):
         if session["done_reps"] >= session.get("target_reps", 0):
             session["running"] = False
             processor.state_tracker["running"] = False
->>>>>>> origin/cordelia
 
     except Exception as e:
         print("Error in similarity callback:", e)
@@ -171,26 +126,32 @@ processor = ProcessFrame(thresholds=thresholds, similarity_callback=_similarity_
 
 
 def gen_frames():
-    while True:
-        success, frame = cap.read()
-        frame = cv2.flip(frame, 1)
-        if not success:
-            break
-        if session.get('running'):
-            frame = processor.process(frame, pose)
-        else:
-            # put text
-            ignore = True
-        sim = None
-        with state['lock']:
-            sim = state.get('last_similarity')
-            # put text
-        if sim is not None and session['running'] == True:
-            print(f"Current similarity: {sim}%")
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame_bytes = buffer.tobytes()
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
+    try:
+        while True:
+            success, frame = cap.read()
+            frame = cv2.flip(frame,1)
+            if not success:
+                print("unSuccess")
+                break
+            if session.get('running'):
+                print("Running")
+                frame = processor.process(frame, pose)
+            else:
+                # put text
+                ignore = True
+            sim = None
+            with state['lock']:
+                sim = state.get('last_similarity')
+                # put text
+            if sim is not None:
+                print(f"Current similarity: {sim}%")
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame_bytes = buffer.tobytes()
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+    except GeneratorExit:
+        print("Client disconnected.")
+    except Exception as e:
+        print("Error in gen_frames:", e)
 
 @app.route('/')
 def index():
@@ -296,7 +257,6 @@ def status():
         if os.path.exists(status_path):
             with open(status_path, 'r', encoding='utf-8') as f:
                 status_data = json.load(f)
-                # None
 
         current_depth_value, current_depth_text = processor.get_depth(as_text=True)
         current_depth_idx = current_depth_value
@@ -341,30 +301,6 @@ def status():
 
         if user_vec is None and hasattr(processor, 'state_tracker'):
             user_vec = processor.state_tracker.get('latest_user_vec')
-<<<<<<< HEAD
-        
-        if current_depth is None and hasattr(processor, 'state_tracker'):
-            display_depth = processor.state_tracker['DISPLAY_DEPTH']
-            for i, is_active in enumerate(display_depth):
-                if is_active:
-                    current_depth = i
-                    break
-                    
-        depth_map = {
-            0: "Quarter Squat (45)",
-            1: "Half Squat (60)",
-            2: "Parallel Squat (90)",
-            3: "Full Squat (120)",
-            4: "Improper Squat"
-        }
-        if current_depth is None:
-            depth_text = "Preparing..."
-        elif isinstance(current_depth, int) and current_depth in depth_map:
-            depth_text = depth_map.get(current_depth)
-        else:
-            depth_text = str(current_depth)
-=======
->>>>>>> origin/cordelia
 
         # similarity ล่าสุด
         with state['lock']:
@@ -372,16 +308,6 @@ def status():
             if similarity is not None:
                 similarity = round(float(similarity), 2)
 
-<<<<<<< HEAD
-        if status_data['keyframes']:
-            depth_map = {
-                0: "Quarter Squat (45)",
-                1: "Half Squat (60)",
-                2: "Parallel Squat (90)",
-                3: "Full Squat (120)",
-                4: "Improper Squat"
-            }
-=======
         # อัปเดตข้อมูล rep_number ให้ครบ
         for idx, kf in enumerate(status_data.get('keyframes', [])):
             if 'rep_number' not in kf:
@@ -390,7 +316,6 @@ def status():
                 kf['depth'] = current_depth_idx
             if 'depth_text' not in kf:
                 kf['depth_text'] = current_depth_text
->>>>>>> origin/cordelia
 
         # ตรวจสอบจำนวนรอบที่เสร็จ
         done_reps = status_data.get('rounds_count', 0)
@@ -443,15 +368,14 @@ def get_reps():
         summary = calculate_summary()
         return jsonify({
             'reps': user_data.get('reps', []),
-            'total': len(user_data.get('reps', [])),
             'average': summary.get('average', None),
+            'total': len(user_data.get('reps', [])),
             'correct': summary.get('correct', 0),
             'incorrect': summary.get('incorrect', 0),
         })
     except Exception as e:
         print('Error in get_reps endpoint:', e)
         return jsonify({'reps': [], 'total': 0})
-
 
 @app.route('/stop', methods=['POST'])
 def stop_session_route():
@@ -462,17 +386,6 @@ def stop_session_route():
 ###################เก็บลง database ## for rep in user_data["reps"]###########
 @app.route('/summary')
 def summary():
-<<<<<<< HEAD
-    kfs = session.get('keyframes', []) or []
-    total = len(kfs)
-    sims = [float(k.get('similarity') or 0.0) for k in kfs]
-    avg = round(statistics.mean(sims), 2) if sims else None
-    CORRECT_THRESH = 80.0
-    correct = sum(1 for s in sims if s >= CORRECT_THRESH)
-    incorrect = total - correct
-
-=======
->>>>>>> origin/cordelia
     return jsonify({
         'total': calculate_summary()['total'],
         'correct': calculate_summary()['correct'],
@@ -488,23 +401,6 @@ def get_keyframes():
         if os.path.exists(status_path):
             with open(status_path, 'r', encoding='utf-8') as f:
                 status_data = json.load(f)
-<<<<<<< HEAD
-        
-        def get_depth_text(depth_value):
-            depth_map = {
-                0: "Quarter Squat (45)",
-                1: "Half Squat (60)",
-                2: "Parallel Squat (90)",
-                3: "Full Squat (120)",
-                4: "Improper Squat"
-            }
-            if depth_value is None:
-                return "Unknown"
-            if isinstance(depth_value, int) and depth_value in depth_map:
-                return depth_map.get(depth_value)
-            return str(depth_value)
-=======
->>>>>>> origin/cordelia
 
         cleaned = []
         last_img = None
@@ -569,33 +465,6 @@ def calculate_summary():
     }
 
 
-<<<<<<< HEAD
-
-
-def get_depth_from_tracker():
-    depth = None
-    if hasattr(processor, 'state_tracker'):
-        display_depth = processor.state_tracker['DISPLAY_DEPTH']
-        for i, is_active in enumerate(display_depth):
-            if is_active:
-                depth = i
-                break
-    
-    if depth is not None:
-        depth_map = {
-            0: "Quarter Squat (45°)",
-            1: "Half Squat (60°)",
-            2: "Parallel Squat (90°)",
-            3: "Full Squat (120°)",
-            4: "Improper Squat"
-        }
-        if isinstance(depth, int) and depth in depth_map:
-            return depth_map[depth]
-        return str(depth)
-    return None
-
-=======
->>>>>>> origin/cordelia
 def load_user_data():
     global user_data
     try:

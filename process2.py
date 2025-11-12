@@ -63,7 +63,7 @@ class ProcessFrame:
     
     def __init__(self, thresholds, similarity_callback=None):
         self.st = time.time()
-        self.flip_frame = flip_frame
+        self.flip_frame = True
             
         # Define text properties
         self.fontFace_ptf = cv2.FONT_HERSHEY_SIMPLEX
@@ -240,6 +240,9 @@ class ProcessFrame:
         frame = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         try:
+            if not results.pose_landmarks:
+                print("[DEBUG] ⚠️ No pose landmarks detected (pose.process returned None)")
+            
             init_landmarks = results.pose_landmarks.landmark
 
             # Render detection
@@ -621,8 +624,7 @@ class ProcessFrame:
                                     user_vec=user_vec_data,
                                     depth=depth_text,
                                     depth_text=depth_text,
-                                    depth_value=current_depth,
-                                    rounds_count=rounds
+                                    depth_value=current_depth
                                 )
                         except Exception as _e:
                             pass
