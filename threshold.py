@@ -31,6 +31,9 @@ def get_thresholds(camrera_screen_width, camera_screen_height):
         'NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE': 10,  # deg
         'KNEE_EXTEND_BEYOND_TOE': 15*ratio_w,
 
+        #? add by khao---------------->
+        'HEEL_FLOAT':15, #deg
+
         'INACTIVE_THRESH': 15.0,
     }
     return thresholds

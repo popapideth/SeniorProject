@@ -30,10 +30,12 @@ def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, f
             mp_results, dict_features[direction]['knee'], frame_width, frame_height)
         ankle_coord = get_landmark_coord(
             mp_results, dict_features[direction]['ankle'], frame_width, frame_height)
+        heel_coord = get_landmark_coord(
+            mp_results, dict_features[direction]['heel'], frame_width, frame_height)
         foot_coord = get_landmark_coord(
             mp_results, dict_features[direction]['foot'], frame_width, frame_height)
 
-        return shoulder_coord, elbow_coord, wrist_coord, hip_coord, knee_coord, ankle_coord, foot_coord
+        return shoulder_coord, elbow_coord, wrist_coord, hip_coord, knee_coord, ankle_coord, heel_coord, foot_coord
     else:
         raise ValueError("feature needs to be either 'nose', 'left' or 'right")
 
