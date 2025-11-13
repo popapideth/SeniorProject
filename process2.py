@@ -277,6 +277,7 @@ class ProcessFrame:
 
                         multiplier = 1
 
+
                     # calculating angle
                     try:
                         shoulder_angle = find_angle(
@@ -291,24 +292,14 @@ class ProcessFrame:
                         current_state = self.get_state(int(hip_angle), int(knee_angle), self.thresholds)
                         self.update_state_sequence(current_state)
 
-                        # draw text
-                        cv2.putText(frame, str(shoulder_angle), shoulder_coord,
-                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-                        cv2.putText(frame, str(hip_angle), hip_coord,
-                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-                        cv2.putText(frame, str(knee_angle), knee_coord,
-                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-                        cv2.putText(frame, str(ankle_angle), ankle_coord,
-                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-
                         # draw ellipse
-                        cv2.ellipse(frame, (shoulder_coord[0], shoulder_coord[1]-5), (30, 30), angle=0, startAngle=90, endAngle=90 - (multiplier*shoulder_angle),
+                        cv2.ellipse(frame, (shoulder_coord[0], shoulder_coord[1]-5), (30, 20), angle=0, startAngle=90, endAngle=90 - (multiplier*shoulder_angle),
                                     color=self.COLORS['white'], thickness=1) if shoulder_angle > 0 else None
-                        cv2.ellipse(frame, (hip_coord[0], hip_coord[1]-10), (30, 30), angle=0, startAngle=-90, endAngle=-90 + multiplier*hip_angle,
+                        cv2.ellipse(frame, (hip_coord[0], hip_coord[1]-10), (30, 20), angle=0, startAngle=-90, endAngle=-90 + multiplier*hip_angle,
                                     color=self.COLORS['white'], thickness=1) if hip_angle > 0 else None
-                        cv2.ellipse(frame, (knee_coord[0], knee_coord[1]-10), (30, 30), angle=0, startAngle=-90, endAngle=-90 - multiplier*knee_angle,
+                        cv2.ellipse(frame, (knee_coord[0], knee_coord[1]-10), (30, 20), angle=0, startAngle=-90, endAngle=-90 - multiplier*knee_angle,
                                     color=self.COLORS['white'], thickness=1) if knee_angle > 0 else None
-                        cv2.ellipse(frame, (ankle_coord[0], ankle_coord[1]-10), (30, 30), angle=0, startAngle=-90, endAngle=-90 + multiplier*ankle_angle,
+                        cv2.ellipse(frame, (ankle_coord[0], ankle_coord[1]-10), (30, 20), angle=0, startAngle=-90, endAngle=-90 + multiplier*ankle_angle,
                                     color=self.COLORS['white'], thickness=1) if ankle_angle > 0 else None
 
                         # draw perpendicular line
@@ -319,30 +310,40 @@ class ProcessFrame:
                                     landmark.x * frame_width), int(landmark.y * frame_height)
                                 cv2.line(frame, (cx, cy), (cx, cy-40),
                                         self.COLORS['light_purple'], 2, lineType=self.linetype)
+
+
+                        # draw line joint
+                        for start_idx, end_idx in chosen_connections:
+                            start_landmark = init_landmarks[start_idx]
+                            end_landmark = init_landmarks[end_idx]
+                            x1, y1 = int(
+                                start_landmark.x * frame_width), int(start_landmark.y * frame_height)
+                            x2, y2 = int(
+                                end_landmark.x * frame_width), int(end_landmark.y * frame_height)
+                            cv2.line(frame, (x1, y1), (x2, y2),
+                                    self.COLORS['light_green'], 2)
+
+                        # draw dot joint 
+                        for idx in chosen_joints:
+                            if idx < 29:
+                                landmark = init_landmarks[idx]
+                                cx, cy = int(landmark.x * frame_width), int(landmark.y * frame_height)
+
+                                cv2.circle(frame, (cx, cy), 5,
+                                        color=self.COLORS['light_green'], thickness=-5)
+                                
+                        # draw text
+                        cv2.putText(frame, str(shoulder_angle), shoulder_coord,
+                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                        cv2.putText(frame, str(hip_angle), hip_coord,
+                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                        cv2.putText(frame, str(knee_angle), knee_coord,
+                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                        cv2.putText(frame, str(ankle_angle), ankle_coord,
+                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+
                     except:
                         pass
-
-                    # draw line joint
-                    for start_idx, end_idx in chosen_connections:
-                        start_landmark = init_landmarks[start_idx]
-                        end_landmark = init_landmarks[end_idx]
-
-                        x1, y1 = int(
-                            start_landmark.x * frame_width), int(start_landmark.y * frame_height)
-                        x2, y2 = int(
-                            end_landmark.x * frame_width), int(end_landmark.y * frame_height)
-
-                        cv2.line(frame, (x1, y1), (x2, y2),
-                                self.COLORS['light_green'], 2)
-
-                    # draw dot joint
-                    for idx in chosen_joints:
-                        if idx < 29:
-                            landmark = init_landmarks[idx]
-                            cx, cy = int(
-                                landmark.x * frame_width), int(landmark.y * frame_height)
-                            cv2.circle(frame, (cx, cy), 5,
-                                    color=self.COLORS['light_green'], thickness=-5)
 
                     # ------------------------------------------ After calculate angle to change state
                     if current_state == 's1':
@@ -363,6 +364,24 @@ class ProcessFrame:
 
                     else:
                         if current_state == 's2':
+
+                            #?-------------------> 
+                            #ถ้าจุดใดใน 4 จุดผิด ให้แสดงสีแดง
+                            # threshold
+                            if abs(knee_coord[0] - foot_coord[0])> self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
+                                self.state_tracker['INCORRECT_POSTURE'] = True
+                                self.state_tracker['POINT_OF_MISTAKE'][2] = True
+                                frame = self.spotMistakePoint(frame, self.COLORS, knee_coord)
+
+                            if abs(hip_angle - ankle_angle) > self.thresholds['NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE']:
+                                self.state_tracker['INCORRECT_POSTURE'] = True
+                                self.state_tracker['POINT_OF_MISTAKE'][2] = True
+
+                                frame = self.spotMistakePoint(frame, self.COLORS, shoulder_coord, hip_coord)
+
+
+
+                            #?-------------------> 
 
                             if self.state_tracker['INCORRECT_POSTURE']:
                                 self.state_tracker['DISPLAY_DEPTH'][:] = False
@@ -530,25 +549,7 @@ class ProcessFrame:
                         except Exception as e:
                             print(f"Error in similarity callback: {str(e)}")
                             pass
-
-                        # threshold
-                        if abs(kf_knee_coord['x'] - kf_foot_coord['x'])*frame_width > self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
-                            self.state_tracker['POINT_OF_MISTAKE'][2] = True
-                            self.state_tracker['pic_at_point_of_mistake'][2] = cropEasy(show_keyframe['frame'],
-                                                                                (kf_knee_coord['x'], kf_knee_coord['y']),
-                                                                                (kf_foot_coord['x'], kf_foot_coord['y'])
-                                                                                )
-                            self.state_tracker['INCORRECT_POSTURE'] = True
-
-                        # threshold
-                        if abs(kf_hip_angle - kf_ankle_angle) > self.thresholds['NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE']:
-                            self.state_tracker['POINT_OF_MISTAKE'][5] = True
-                            self.state_tracker['pic_at_point_of_mistake'][5] = cropEasy(show_keyframe['frame'],
-                                                                                (kf_hip_coord['x'], kf_hip_coord['y']),
-                                                                                (kf_ankle_coord['x'], kf_ankle_coord['y'])
-                                                                                )
-                            self.state_tracker['INCORRECT_POSTURE'] = True
-
+    
                         print(
                             f"รอบที่ {self.state_tracker['rounds_count']+1} เสร็จแล้ว")
                         self.state_tracker['rounds_count'] += 1
@@ -572,7 +573,6 @@ class ProcessFrame:
                                     depth=depth_text,
                                     depth_text=depth_text,
                                     depth_value=current_depth,
-                                    rounds_count=rounds
                                 )
                         except Exception as _e:
                             pass
@@ -639,3 +639,28 @@ class ProcessFrame:
                 return (i, depth_text) if as_text else i
 
         return (None, "Unknown") if as_text else None
+    
+    def spotMistakePoint(self, frame, COLORS, coord1, coord2=[]):
+        h, w, _ = frame.shape
+
+        ratio_w, ratio_h = scaledTo(w, h)
+        alpha = 0.4
+        overlay = frame.copy()
+
+        if(len(coord2) > 0 and coord2 is not None):
+            cx1, cy1 = coord1
+            cx2, cy2 = coord2
+
+            cv2.line(overlay, (cx1,cy1), (cx2,cy2), COLORS['red'], int(10*ratio_w))
+            frame_new = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
+
+        else:
+            cx, cy = coord1
+            cv2.circle(overlay, (cx, cy), int(7*ratio_w),
+                color=COLORS['red'], thickness=-1)
+            cv2.circle(overlay, (cx, cy), int(11*ratio_w),
+                color=COLORS['red'], thickness=int(2*ratio_w))
+
+            frame_new = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
+
+        return frame_new
