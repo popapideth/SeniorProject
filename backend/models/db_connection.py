@@ -2,8 +2,10 @@ import psycopg2
 from dotenv import load_dotenv
 import os
 import json
+from pathlib import Path
 
 load_dotenv(dotenv_path=".env")
+env_path = Path(__file__).resolve().parent.parent / ".env"  
 
 # ดึงค่าตัวแปรจาก .env
 DB_HOST = os.getenv("HOST")

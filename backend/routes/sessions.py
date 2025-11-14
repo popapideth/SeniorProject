@@ -210,8 +210,8 @@ def createSessionWithRepetition():
         conn.commit()
         cursor.close()
         conn.close()
-
-        return jsonify({'message': 'Repetition with landmarks created success','repetition_id': repetition_id }, 201)
+    
+        return jsonify({'message': 'Session with Repetitios created success','session_id': session_id }, 201)
     except Exception as e:
         return  jsonify({'error': str(e)}), 500
             

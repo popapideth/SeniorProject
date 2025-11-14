@@ -8,7 +8,9 @@ from process2 import ProcessFrame
 from threshold import get_mediapipe_pose, get_thresholds
 import statistics
 # backend
-import datetime
+from backend.models.db_connection import get_db_connection
+from datetime import datetime
+current_session_id = None
 
 app = Flask(__name__)
 
@@ -43,6 +45,7 @@ CORRECT_THRESH =85.0
 
 USER_DATA_PATH = os.path.join('static', 'user_data.json')
 
+# เก็บลงDatabase ในFuncนี้ ซึ่งจะถูกเรียกทุกครั้งที่ rep สำเร็จ
 def _similarity_cb(val):
     try:
         if val is None:
@@ -106,6 +109,10 @@ def _similarity_cb(val):
         user_data.setdefault("reps", []).append(record)
         save_user_data()
 
+        # Save to Database
+        with app.app_context():
+            saveToDatabase(record)
+
         try:
             with state['lock']:
                 state['last_depth_text'] = depth_text
@@ -134,7 +141,6 @@ def gen_frames():
                 print("unSuccess")
                 break
             if session.get('running'):
-                print("Running")
                 frame = processor.process(frame, pose)
             else:
                 # put text
@@ -235,6 +241,27 @@ def start_session():
 
     except Exception as e:
         print(f"[ERROR] Failed to reset processor tracker: {e}")
+
+    # สร้าง สร้าง session แค่ครั้งเดียวตอนเริ่ม
+    global current_session_id
+    with app.app_context():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        exercise_name = "squat"
+        created_time = datetime.now().isoformat()
+
+        query  = ''' INSERT INTO public.sessions
+        (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,created_time)
+        VALUES (%s,%s,%s,%s,%s,%s)
+        RETURNING session_id'''
+        cursor.execute(query,(exercise_name,0,0,0,0,created_time))
+
+        current_session_id = cursor.fetchone()[0]#เก็บ session_id
+        conn.commit()
+        cursor.close()
+        conn.close()
+    print("🔵 New session created:", current_session_id)
 
     return jsonify({
         'ok': True,
@@ -510,5 +537,71 @@ def save_user_data():
         print(f"Failed to save user_data to {USER_DATA_PATH}:", e)
 load_user_data()
 
+def saveToDatabase(record):
+    try:
+        global current_session_id
+        with app.app_context():
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            if current_session_id is None:
+                print("ERROR: No active session_id, cannot save rep")
+                return
+            
+            # Data from reps:[] to repetitions
+            user_image = record.get("user_image",None)
+            accuracy_percent = record.get("similarity", 0)
+            depth = record.get("depth",None)
+            depth_value = record.get("depth_value", 0)
+            user_vec = record.get("user_vec") or []
+            if len(user_vec) == 4 :
+                shoulder_angle,hip_angle,knee_angle,ankle_angle = user_vec
+            else:
+                shoulder_angle=hip_angle=knee_angle=ankle_angle = None
+            timestamp = record.get("timestamp")
+            created_time = (
+                datetime.fromtimestamp(timestamp/1000.0).isoformat()
+                if timestamp else None
+            )
+            rep_number = record.get("rep_number" , 0)
+            isCorrect = record.get("isCorrect", None)
+            session_id = current_session_id
+
+            insertRepetition_query = '''INSERT INTO public.repetitions
+                (session_id,reps_number,iscorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+            cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time))       
+            conn.commit()
+
+            # Insert data to sessions
+            summary = calculate_summary()
+            total_count = summary['total']
+            correct_count = summary['correct']
+            incorrect_count = summary['incorrect']
+            avg_accuracy_percent = summary['average']
+
+            update_session_query = '''UPDATE public.sessions
+            SET
+                total_count = %s,
+                correct_count = %s,
+                incorrect_count = %s,
+                avg_accuracy_percent = %s
+            WHERE session_id = %s
+            '''
+            cursor.execute(update_session_query, (total_count,correct_count,incorrect_count,avg_accuracy_percent,session_id))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print("DB saved successfully!")
+            return {
+                'message': 'Session with Repetitions created success',
+                'session_id': session_id
+            }
+    except Exception as e:
+        print(f"Error saving to DB: {e}")
+        return {
+            'message': 'Error saving to DB',
+            'error': str(e)
+        }
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
