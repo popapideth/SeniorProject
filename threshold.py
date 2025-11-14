@@ -33,6 +33,7 @@ def get_thresholds(camrera_screen_width, camera_screen_height):
 
         #? add by khao---------------->
         'HEEL_FLOAT':15, #deg
+        #? end by khao---------------->
 
         'INACTIVE_THRESH': 15.0,
     }

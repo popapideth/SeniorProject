@@ -201,7 +201,9 @@ class ProcessFrame:
                                     )
 
             if init_landmarks[self.mp_pose.PoseLandmark.NOSE].visibility > 0.5:
-
+                
+                #? add by khao ------------->
+                #เพิ่มตำแหน่งจุดพิกัดของส้นเท้า
                 nose_coord = get_chosen_joints_coord(
                     init_landmarks, self.dict_features, 'nose', frame_width, frame_height)
                 left_shoulder_coord, left_elbow_coord, left_wrist_coord, left_hip_coord, left_knee_coord, left_ankle_coord, left_heel_coord, left_foot_coord = \
@@ -210,6 +212,7 @@ class ProcessFrame:
                 right_shoulder_coord, right_elbow_coord, right_wrist_coord, right_hip_coord, right_knee_coord, right_ankle_coord, right_heel_coord, right_foot_coord = \
                     get_chosen_joints_coord(
                         init_landmarks, self.dict_features, 'right', frame_width, frame_height)
+                #? end by khao ------------->
 
                 offset_shoulder_x = findDistance(
                     left_shoulder_coord, right_shoulder_coord)
@@ -259,7 +262,9 @@ class ProcessFrame:
                         hip_coord = left_hip_coord
                         knee_coord = left_knee_coord
                         ankle_coord = left_ankle_coord
+                        #? add by khao---------------->
                         heel_coord = left_heel_coord
+                        #? end by khao---------------->
                         foot_coord = left_foot_coord
 
                         multiplier = -1
@@ -274,7 +279,9 @@ class ProcessFrame:
                         hip_coord = right_hip_coord
                         knee_coord = right_knee_coord
                         ankle_coord = right_ankle_coord
+                        #? add by khao---------------->
                         heel_coord = right_heel_coord
+                        #? end by khao---------------->
                         foot_coord = right_foot_coord
 
                         multiplier = 1
@@ -312,7 +319,6 @@ class ProcessFrame:
                                 cv2.line(frame, (cx, cy), (cx, cy-40),
                                         self.COLORS['light_purple'], 2, lineType=self.linetype)
 
-
                         # draw line joint
                         for start_idx, end_idx in chosen_connections:
                             start_landmark = init_landmarks[start_idx]
@@ -333,6 +339,8 @@ class ProcessFrame:
                                 cv2.circle(frame, (cx, cy), 5,
                                         color=self.COLORS['light_green'], thickness=-5)
                                 
+                        #? add by khao---------------->
+                        # ปรับการวัดเส้นโค้งของการทำมุมให้ดีขึ้น
                         # brabra = int(shoulder_coord[0] - (shoulder_coord[0] * 0.1 * multiplier))
                         # cv2.circle(frame, (brabra, self.slope(shoulder_coord,hip_coord, brabra)), 9,
                         #                 color=self.COLORS['orange'], thickness=-5)
@@ -344,17 +352,16 @@ class ProcessFrame:
 
                         cv2.circle(frame, (x_predict,y_test), 5,
                                         color=self.COLORS['neo_blue'], thickness=-5)
-
+                        
                         try:
                             theata_test = find_angle(hip_coord, np.array([x_predict,y_test+50]), np.array([x_predict,y_test]))
                             print(theata_test)
                         except Exception as e:
                             print(f"แตกกกกกกก {e}")
-                            
-
                         cv2.ellipse(frame, (x_predict, y_test), (30, 30), 
                                     angle=0, startAngle=90+theata_test, endAngle= 90 - (multiplier*shoulder_angle) + theata_test,
                                     color=self.COLORS['orange'], thickness=3) if shoulder_angle > 0 else None
+                        #? end by khao---------------->
                  
                         # draw text
                         cv2.putText(frame, str(shoulder_angle), shoulder_coord,
@@ -369,7 +376,8 @@ class ProcessFrame:
                     except:
                         pass
 
-                    # heel_coord, foot_coord, 
+                    #? add by khao---------------->
+                    # คำนวนมุมสำหรับตรวจส้นเท้าลอย
                     im_point_FloatHeel = np.array([heel_coord[0], foot_coord[1]])
 
                     cv2.line(frame, heel_coord, foot_coord,
@@ -381,7 +389,7 @@ class ProcessFrame:
                     
                     cv2.putText(frame, str(floatheel_angle), foot_coord,
                             self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-
+                    #? end by khao---------------->
 
                     # ------------------------------------------ After calculate angle to change state
                     if current_state == 's1':
@@ -403,7 +411,7 @@ class ProcessFrame:
                     else:
                         if current_state == 's2':
 
-                            #?-------------------> 
+                            #? add by khao---------------->
                             #ถ้าจุดใดใน 4 จุดผิด ให้แสดงสีแดง
                             # threshold
                             if abs(knee_coord[0] - foot_coord[0])> self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
@@ -419,8 +427,8 @@ class ProcessFrame:
                             
                             if(floatheel_angle > self.thresholds['HEEL_FLOAT']):
                                 print("Heel Floating!!!")
-                            
-                            #?-------------------> 
+                                frame = self.spotMistakePoint(frame, self.COLORS, heel_coord)
+                            #? end by khao-------------------> 
 
                             if self.state_tracker['INCORRECT_POSTURE']:
                                 self.state_tracker['DISPLAY_DEPTH'][:] = False
@@ -679,6 +687,8 @@ class ProcessFrame:
 
         return (None, "Unknown") if as_text else None
     
+    #? add by khao---------------->
+    # วาดจุดสีแดง ณ ตำแหน่งที่ทำผิด
     def spotMistakePoint(self, frame, COLORS, coord1, coord2=[]):
         h, w, _ = frame.shape
 
@@ -703,26 +713,10 @@ class ProcessFrame:
             frame_new = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
 
         return frame_new
+    #? end by khao---------------->
     
-    def slope(self, c1, c2, bias):
-        cx1, cy1 = c1
-        cx2, cy2 = c2
-
-        m = (cy2-cy1)/(cx2-cx1)
-        ct2 = cy2-(m*cx2)
-        ct1 = cy1-(m*cx1)
-
-        def formular(x, m, c):
-            y = x*m + c
-            return int(y)
-        x_predict = bias
-        y_predict = formular(x_predict,m,ct2)
-
-        if(m == 0):
-            y_predict = formular(x_predict,m,ct2)
-
-        return y_predict
-    
+    #? add by khao---------------->
+    # ใช้ในการวาดส่วนโค้งเฉยๆ
     def imaginaryLine(self, c1, c2, bias):
         cx1, cy1 = c1
         cx2, cy2 = c2
@@ -739,3 +733,4 @@ class ProcessFrame:
         x_predict = formular_x(y_test, m, ct)
 
         return x_predict
+    #?------------------->

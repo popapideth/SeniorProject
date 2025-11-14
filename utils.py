@@ -11,6 +11,8 @@ def get_landmark_coord(pose_landmark, key, frame_width=640, frame_height=480):
     mark_y = int(pose_landmark[key].y * frame_height)
     return np.array([mark_x, mark_y])
 
+#? add by khao---------------->
+# heel_coord
 def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, frame_height):
     if (direction == 'nose'):
         nose_coord = get_landmark_coord(
@@ -30,15 +32,17 @@ def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, f
             mp_results, dict_features[direction]['knee'], frame_width, frame_height)
         ankle_coord = get_landmark_coord(
             mp_results, dict_features[direction]['ankle'], frame_width, frame_height)
+        
         heel_coord = get_landmark_coord(
             mp_results, dict_features[direction]['heel'], frame_width, frame_height)
+
         foot_coord = get_landmark_coord(
             mp_results, dict_features[direction]['foot'], frame_width, frame_height)
 
         return shoulder_coord, elbow_coord, wrist_coord, hip_coord, knee_coord, ankle_coord, heel_coord, foot_coord
     else:
         raise ValueError("feature needs to be either 'nose', 'left' or 'right")
-
+#? end by khao---------------->
 
 def find_angle(a, c, b=np.array([0, 0])):
     p1_ref = a - b
