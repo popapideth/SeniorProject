@@ -253,7 +253,9 @@ def cropEasy(frame, point1, point2=False):
     h, w = frame.shape[:2]
     ratio_w, ratio_h = scaledTo(w, h)
     CONST_PIXEL = 50
+
     # cv2.imwrite("hahaha.png", frame)
+
     x1, y1 = point1  # Mediapipe Normalize
     if point2:
         x2, y2 = point2

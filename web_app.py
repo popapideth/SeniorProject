@@ -7,6 +7,10 @@ import os
 from process2 import ProcessFrame
 from threshold import get_mediapipe_pose, get_thresholds
 import statistics
+# backend
+from backend.models.db_connection import get_db_connection
+from datetime import datetime
+current_session_id = None
 
 app = Flask(__name__)
 
@@ -43,6 +47,7 @@ CORRECT_THRESH =85.0
 
 USER_DATA_PATH = os.path.join('static', 'user_data.json')
 
+# เก็บลงDatabase ในFuncนี้ ซึ่งจะถูกเรียกทุกครั้งที่ rep สำเร็จ
 def _similarity_cb(val):
     try:
         if val is None:
@@ -129,33 +134,37 @@ def _similarity_cb(val):
 processor = ProcessFrame(thresholds=thresholds, similarity_callback=_similarity_cb)
 
 def gen_frames():
-    s_gf = time.time()  
-    while True:
-        success, frame = cap.read()
-        frame = cv2.flip(frame, 1)
+    try:
+        s_gf = time.time()  
+        while True:
+            success, frame = cap.read()
+            frame = cv2.flip(frame, 1)
+            
+            if not success:
+                break
+            if session.get('running'):
+                frame = processor.process(frame, pose)
+            else:
+                # put text
+                ignore = True
+            sim = None
+            with state['lock']:
+                sim = state.get('last_similarity')
+                # put text
+
+            elasped_s_gf = time.time() - s_gf
+            if sim is not None and session['running'] == True and elasped_s_gf>=1.0:
+                print(f"Current similarity: {sim}%")
+                s_gf = time.time()
+
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame_bytes = buffer.tobytes()
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+    except GeneratorExit:
+        print("Client disconnected.")
+    except Exception as e:
+        print("Error in gen_frames:", e)
         
-        if not success:
-            break
-        if session.get('running'):
-            frame = processor.process(frame, pose)
-        else:
-            # put text
-            ignore = True
-        sim = None
-        with state['lock']:
-            sim = state.get('last_similarity')
-            # put text
-
-        elasped_s_gf = time.time() - s_gf
-        if sim is not None and session['running'] == True and elasped_s_gf>=1.0:
-            print(f"Current similarity: {sim}%")
-            s_gf = time.time()
-
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame_bytes = buffer.tobytes()
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-
 @app.route('/')
 def index():
     return render_template('index3.html')
@@ -239,6 +248,27 @@ def start_session():
     except Exception as e:
         print(f"[ERROR] Failed to reset processor tracker: {e}")
 
+    # สร้าง สร้าง session แค่ครั้งเดียวตอนเริ่ม
+    global current_session_id
+    with app.app_context():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        exercise_name = "squat"
+        created_time = datetime.now().isoformat()
+
+        query  = ''' INSERT INTO public.sessions
+        (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,created_time)
+        VALUES (%s,%s,%s,%s,%s,%s)
+        RETURNING session_id'''
+        cursor.execute(query,(exercise_name,0,0,0,0,created_time))
+
+        current_session_id = cursor.fetchone()[0]#เก็บ session_id
+        conn.commit()
+        cursor.close()
+        conn.close()
+    print("🔵 New session created:", current_session_id)
+
     return jsonify({
         'ok': True,
         'target_reps': reps,
@@ -260,7 +290,6 @@ def status():
         if os.path.exists(status_path):
             with open(status_path, 'r', encoding='utf-8') as f:
                 status_data = json.load(f)
-                # None
 
         current_depth_value, current_depth_text = processor.get_depth(as_text=True)
         current_depth_idx = current_depth_value
@@ -372,15 +401,14 @@ def get_reps():
         summary = calculate_summary()
         return jsonify({
             'reps': user_data.get('reps', []),
-            'total': len(user_data.get('reps', [])),
             'average': summary.get('average', None),
+            'total': len(user_data.get('reps', [])),
             'correct': summary.get('correct', 0),
             'incorrect': summary.get('incorrect', 0),
         })
     except Exception as e:
         print('Error in get_reps endpoint:', e)
         return jsonify({'reps': [], 'total': 0})
-
 
 @app.route('/stop', methods=['POST'])
 def stop_session_route():
@@ -515,5 +543,72 @@ def save_user_data():
         print(f"Failed to save user_data to {USER_DATA_PATH}:", e)
 load_user_data()
 
+def saveToDatabase(record):
+    try:
+        global current_session_id
+        with app.app_context():
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            if current_session_id is None:
+                print("ERROR: No active session_id, cannot save rep")
+                return
+            
+            # Data from reps:[] to repetitions
+            user_image = record.get("user_image",None)
+            accuracy_percent = record.get("similarity", 0)
+            depth = record.get("depth",None)
+            depth_value = record.get("depth_value", 0)
+            user_vec = record.get("user_vec") or []
+            if len(user_vec) == 4 :
+                shoulder_angle,hip_angle,knee_angle,ankle_angle = user_vec
+            else:
+                shoulder_angle=hip_angle=knee_angle=ankle_angle = None
+            timestamp = record.get("timestamp")
+            created_time = (
+                datetime.fromtimestamp(timestamp/1000.0).isoformat()
+                if timestamp else None
+            )
+            rep_number = record.get("rep_number" , 0)
+            isCorrect = record.get("isCorrect", None)
+            session_id = current_session_id
+
+            insertRepetition_query = '''INSERT INTO public.repetitions
+                (session_id,reps_number,iscorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+            cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time))       
+            conn.commit()
+
+            # Insert data to sessions
+            summary = calculate_summary()
+            total_count = summary['total']
+            correct_count = summary['correct']
+            incorrect_count = summary['incorrect']
+            avg_accuracy_percent = summary['average']
+
+            update_session_query = '''UPDATE public.sessions
+            SET
+                total_count = %s,
+                correct_count = %s,
+                incorrect_count = %s,
+                avg_accuracy_percent = %s
+            WHERE session_id = %s
+            '''
+            cursor.execute(update_session_query, (total_count,correct_count,incorrect_count,avg_accuracy_percent,session_id))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print("DB saved successfully!")
+            return {
+                'message': 'Session with Repetitions created success',
+                'session_id': session_id
+            }
+    except Exception as e:
+        print(f"Error saving to DB: {e}")
+        return {
+            'message': 'Error saving to DB',
+            'error': str(e)
+        }
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
