@@ -12,7 +12,7 @@ def get_landmark_coord(pose_landmark, key, frame_width=640, frame_height=480):
     return np.array([mark_x, mark_y])
 
 #? add by khao---------------->
-# heel_coord
+# heel_coord , ear_coord
 def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, frame_height):
     if (direction == 'nose'):
         nose_coord = get_landmark_coord(
@@ -20,6 +20,10 @@ def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, f
         return nose_coord
 
     elif (direction == 'left' or 'right'):
+        #? add by khao---------------->
+        ear_coord = get_landmark_coord(
+            mp_results, dict_features[direction]['ear'], frame_width, frame_height)
+        #? end by khao---------------->
         shoulder_coord = get_landmark_coord(
             mp_results, dict_features[direction]['shoulder'], frame_width, frame_height)
         elbow_coord = get_landmark_coord(
@@ -32,14 +36,16 @@ def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, f
             mp_results, dict_features[direction]['knee'], frame_width, frame_height)
         ankle_coord = get_landmark_coord(
             mp_results, dict_features[direction]['ankle'], frame_width, frame_height)
-        
+        #? add by khao---------------->
         heel_coord = get_landmark_coord(
             mp_results, dict_features[direction]['heel'], frame_width, frame_height)
-
+        #? end by khao---------------->
         foot_coord = get_landmark_coord(
             mp_results, dict_features[direction]['foot'], frame_width, frame_height)
 
-        return shoulder_coord, elbow_coord, wrist_coord, hip_coord, knee_coord, ankle_coord, heel_coord, foot_coord
+        #? end by khao---------------->
+        return ear_coord, shoulder_coord, elbow_coord, wrist_coord, hip_coord, knee_coord, ankle_coord, heel_coord, foot_coord
+        #? add by khao---------------->
     else:
         raise ValueError("feature needs to be either 'nose', 'left' or 'right")
 #? end by khao---------------->

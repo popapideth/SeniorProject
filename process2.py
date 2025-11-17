@@ -57,7 +57,11 @@ class ProcessFrame:
                             (26, 28)]
 
         self.dict_features = {}
+
+        #? add by khao ---------------->
+        # เพิ่มพิกัดหู
         self.left_features = {
+            'ear':7,
             'shoulder': 11,
             'elbow': 13,
             'wrist': 15,
@@ -69,6 +73,7 @@ class ProcessFrame:
         }
 
         self.right_features = {
+            'ear':8,
             'shoulder': 12,
             'elbow': 14,
             'wrist': 16,
@@ -78,6 +83,7 @@ class ProcessFrame:
             'heel': 30,
             'foot': 32
         }
+        #? end by khao ---------------->
 
         self.dict_features['left'] = self.left_features
         self.dict_features['right'] = self.right_features
@@ -179,6 +185,11 @@ class ProcessFrame:
     def process(self, frame: np.array, pose):
         frame_height, frame_width, _ = frame.shape    
 
+        #? add by khao---------------->
+        ratio_w, ratio_h = scaledTo(frame_width, frame_height)
+        print("ratio_w/h:", ratio_w, ratio_h)
+        #? end by khao---------------->
+
         # Recolor image
         image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image.flags.writeable = False
@@ -195,24 +206,24 @@ class ProcessFrame:
             # Render detection
             self.mp_drawing.draw_landmarks(frame, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
                                     self.mp_drawing.DrawingSpec(
-                                        color = self.COLORS['light_green'], thickness=1, circle_radius=2),
+                                        color = self.COLORS['light_green'], thickness=1*ratio_w, circle_radius=2*ratio_w),
                                     self.mp_drawing.DrawingSpec(
-                                        color = self.COLORS['light_blue'], thickness=1, circle_radius=2),
+                                        color = self.COLORS['light_blue'], thickness=1*ratio_w, circle_radius=2*ratio_w),
                                     )
 
             if init_landmarks[self.mp_pose.PoseLandmark.NOSE].visibility > 0.5:
                 
-                #? add by khao ------------->
-                #เพิ่มตำแหน่งจุดพิกัดของส้นเท้า
+                #? add by khao---------------->
+                #เพิ่มตำแหน่งจุดพิกัดของส้นเท้า และหู
                 nose_coord = get_chosen_joints_coord(
                     init_landmarks, self.dict_features, 'nose', frame_width, frame_height)
-                left_shoulder_coord, left_elbow_coord, left_wrist_coord, left_hip_coord, left_knee_coord, left_ankle_coord, left_heel_coord, left_foot_coord = \
+                left_ear_coord, left_shoulder_coord, left_elbow_coord, left_wrist_coord, left_hip_coord, left_knee_coord, left_ankle_coord, left_heel_coord, left_foot_coord = \
                     get_chosen_joints_coord(
                         init_landmarks, self.dict_features, 'left', frame_width, frame_height)
-                right_shoulder_coord, right_elbow_coord, right_wrist_coord, right_hip_coord, right_knee_coord, right_ankle_coord, right_heel_coord, right_foot_coord = \
+                right_ear_coord, right_shoulder_coord, right_elbow_coord, right_wrist_coord, right_hip_coord, right_knee_coord, right_ankle_coord, right_heel_coord, right_foot_coord = \
                     get_chosen_joints_coord(
                         init_landmarks, self.dict_features, 'right', frame_width, frame_height)
-                #? end by khao ------------->
+                #? end by khao---------------->
 
                 offset_shoulder_x = findDistance(
                     left_shoulder_coord, right_shoulder_coord)
@@ -255,7 +266,9 @@ class ProcessFrame:
                     if left_shoulder_z < right_shoulder_z:
                         chosen_joints = self.left_joints
                         chosen_connections = self.left_connections
-
+                        #? add by khao---------------->
+                        ear_coord = left_ear_coord
+                        #? end by khao---------------->
                         shoulder_coord = left_shoulder_coord
                         elbow_coord = left_elbow_coord
                         wrist_coord = left_wrist_coord
@@ -272,7 +285,9 @@ class ProcessFrame:
                     elif left_shoulder_z > right_shoulder_z:
                         chosen_joints = self.right_joints
                         chosen_connections = self.right_connections
-
+                        #? add by khao---------------->
+                        ear_coord = right_ear_coord
+                        #? end by khao---------------->
                         shoulder_coord = right_shoulder_coord
                         elbow_coord = right_elbow_coord
                         wrist_coord = right_wrist_coord
@@ -301,13 +316,25 @@ class ProcessFrame:
                         self.update_state_sequence(current_state)
 
                         # draw ellipse
-                        cv2.ellipse(frame, (shoulder_coord[0], shoulder_coord[1]-5), (30, 20), angle=0, startAngle=90, endAngle=90 - (multiplier*shoulder_angle),
-                                    color=self.COLORS['white'], thickness=1) if shoulder_angle > 0 else None
-                        cv2.ellipse(frame, (hip_coord[0], hip_coord[1]-10), (30, 20), angle=0, startAngle=-90, endAngle=-90 + multiplier*hip_angle,
+                        # #? add by khao---------------->
+                        # ปรับการวัดเส้นโค้งของการทำมุมให้ดีขึ้น
+                        # y_test = int(shoulder_coord[1] + (0.3 * (hip_coord[1] - shoulder_coord[1])))
+                        y_test = shoulder_coord[1]
+                        x_predict = self.imaginaryLine(shoulder_coord, hip_coord, y_test)
+                        shldr_degree_variance = find_angle(hip_coord, np.array([x_predict,y_test+int(50*ratio_h)]), np.array([x_predict,y_test]))
+                        sdv_contition = (shoulder_coord[0]) > (hip_coord[0]) if multiplier==1 else (shoulder_coord[0] < hip_coord[0])
+                        cv2.ellipse(frame, (x_predict, y_test), (int(30*ratio_w), int(30*ratio_h)), 
+                                    angle=0, startAngle=90+(shldr_degree_variance if sdv_contition else shldr_degree_variance*(-1)), 
+                                    endAngle = 90 - (multiplier*shoulder_angle) + (shldr_degree_variance if sdv_contition else shldr_degree_variance*(-1)), 
+                                    color=self.COLORS['white'], 
+                                    thickness=2) if shoulder_angle > 0 else None
+                        #? end by khao---------------->
+
+                        cv2.ellipse(frame, (hip_coord[0], hip_coord[1]-int(10*ratio_h)), (int(30*ratio_w), int(30*ratio_h)), angle=0, startAngle=-90, endAngle=-90 + multiplier*hip_angle,
                                     color=self.COLORS['white'], thickness=1) if hip_angle > 0 else None
-                        cv2.ellipse(frame, (knee_coord[0], knee_coord[1]-10), (30, 20), angle=0, startAngle=-90, endAngle=-90 - multiplier*knee_angle,
+                        cv2.ellipse(frame, (knee_coord[0], knee_coord[1]-int(10*ratio_h)), (int(30*ratio_w), int(30*ratio_h)), angle=0, startAngle=-90, endAngle=-90 - multiplier*knee_angle,
                                     color=self.COLORS['white'], thickness=1) if knee_angle > 0 else None
-                        cv2.ellipse(frame, (ankle_coord[0], ankle_coord[1]-10), (30, 20), angle=0, startAngle=-90, endAngle=-90 + multiplier*ankle_angle,
+                        cv2.ellipse(frame, (ankle_coord[0], ankle_coord[1]-int(10*ratio_h)), (int(30*ratio_w), int(30*ratio_h)), angle=0, startAngle=-90, endAngle=-90 + multiplier*ankle_angle,
                                     color=self.COLORS['white'], thickness=1) if ankle_angle > 0 else None
 
                         # draw perpendicular line
@@ -316,8 +343,8 @@ class ProcessFrame:
                                 landmark = init_landmarks[idx]
                                 cx, cy = int(
                                     landmark.x * frame_width), int(landmark.y * frame_height)
-                                cv2.line(frame, (cx, cy), (cx, cy-40),
-                                        self.COLORS['light_purple'], 2, lineType=self.linetype)
+                                cv2.line(frame, (cx, cy), (cx, cy-int(30*ratio_h)),
+                                        self.COLORS['light_purple'], 1, lineType=self.linetype)
 
                         # draw line joint
                         for start_idx, end_idx in chosen_connections:
@@ -338,31 +365,7 @@ class ProcessFrame:
 
                                 cv2.circle(frame, (cx, cy), 5,
                                         color=self.COLORS['light_green'], thickness=-5)
-                                
-                        #? add by khao---------------->
-                        # ปรับการวัดเส้นโค้งของการทำมุมให้ดีขึ้น
-                        # brabra = int(shoulder_coord[0] - (shoulder_coord[0] * 0.1 * multiplier))
-                        # cv2.circle(frame, (brabra, self.slope(shoulder_coord,hip_coord, brabra)), 9,
-                        #                 color=self.COLORS['orange'], thickness=-5)
-                        y_test = int(shoulder_coord[1] + (0.3 * (hip_coord[1] - shoulder_coord[1])))
-                        cv2.circle(frame, (int(frame_width/2),y_test), 5,
-                                        color=self.COLORS['orange'], thickness=-5)
-                        
-                        x_predict = self.imaginaryLine(shoulder_coord, hip_coord, y_test)
-
-                        cv2.circle(frame, (x_predict,y_test), 5,
-                                        color=self.COLORS['neo_blue'], thickness=-5)
-                        
-                        try:
-                            theata_test = find_angle(hip_coord, np.array([x_predict,y_test+50]), np.array([x_predict,y_test]))
-                            print(theata_test)
-                        except Exception as e:
-                            print(f"แตกกกกกกก {e}")
-                        cv2.ellipse(frame, (x_predict, y_test), (30, 30), 
-                                    angle=0, startAngle=90+theata_test, endAngle= 90 - (multiplier*shoulder_angle) + theata_test,
-                                    color=self.COLORS['orange'], thickness=3) if shoulder_angle > 0 else None
-                        #? end by khao---------------->
-                 
+                                         
                         # draw text
                         cv2.putText(frame, str(shoulder_angle), shoulder_coord,
                                     self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
@@ -425,9 +428,15 @@ class ProcessFrame:
 
                                 frame = self.spotMistakePoint(frame, self.COLORS, shoulder_coord, hip_coord)
                             
-                            if(floatheel_angle > self.thresholds['HEEL_FLOAT']):
-                                print("Heel Floating!!!")
+                            if(floatheel_angle > self.thresholds['HEEL_FLOAT_VARIANCE']):
+                                # print("Heel Floating!!!")
                                 frame = self.spotMistakePoint(frame, self.COLORS, heel_coord)
+
+                            im_point_ear = np.array([shoulder_coord[0], shoulder_coord[1]+int(50*ratio_h)])
+                            ear_degree_variance = find_angle(ear_coord, im_point_ear,shoulder_coord)
+                            if (ear_degree_variance > self.thresholds['EAR_DEGREE_VARIANCE']):
+                                frame = self.spotMistakePoint(frame, self.COLORS, ear_coord)
+
                             #? end by khao-------------------> 
 
                             if self.state_tracker['INCORRECT_POSTURE']:
@@ -699,10 +708,8 @@ class ProcessFrame:
         if(len(coord2) > 0 and coord2 is not None):
             cx1, cy1 = coord1
             cx2, cy2 = coord2
-
             cv2.line(overlay, (cx1,cy1), (cx2,cy2), COLORS['red'], int(10*ratio_w))
             frame_new = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
-
         else:
             cx, cy = coord1
             cv2.circle(overlay, (cx, cy), int(7*ratio_w),
@@ -721,7 +728,7 @@ class ProcessFrame:
         cx1, cy1 = c1
         cx2, cy2 = c2
 
-        m = (cy2-cy1)/(cx2-cx1) if (cx2-cx1 != 0) else 1
+        m = (cy2-cy1)/ ((cx2-cx1) if (cx2-cx1 != 0) else 1)
         ct = cy2-(m*cx2)
 
         def formular_x(y, m, c):

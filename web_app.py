@@ -31,7 +31,9 @@ pose = get_mediapipe_pose()
 cap = cv2.VideoCapture(0)
 user_camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 user_camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
 thresholds = get_thresholds(user_camera_width, user_camera_height)
+capUser = (user_camera_width,user_camera_height)
 
 user_data = {
     "reps": [],
@@ -130,7 +132,6 @@ def gen_frames():
     s_gf = time.time()  
     while True:
         success, frame = cap.read()
-
         frame = cv2.flip(frame, 1)
         
         if not success:
