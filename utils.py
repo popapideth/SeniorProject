@@ -181,11 +181,10 @@ def _show_feedback(frame, point_of_mistake, display_depth, mistake_dict_maps, sq
 
     return frame
 
+#? add by khao---------------->
 def _show_mistake_point_feedback(frame, mistake_dict_maps, value=0):
-
     h, w = frame.shape[:2]
     ratio_w, ratio_h = scaledTo(w, h)
-
     try:
         draw_text(
             frame,
@@ -196,14 +195,11 @@ def _show_mistake_point_feedback(frame, mistake_dict_maps, value=0):
             font_scale=0.4,
             text_color_bg=mistake_dict_maps[2]
         )
-
-        #             self.MISTAKE_ID_MAP = {
-        # 0: ('TOO BEND FORWARD', 300, self.COLORS['neo_blue']),
     except:
         print("แตกใน show_feedback")
 
     return frame
-
+#? end by khao---------------->
 
 def draw_rounded_rect(img, rect_start, rect_end, corner_width, box_color):
 
