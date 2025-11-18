@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 from screeninfo import get_monitors
 from utils import get_chosen_joints_coord, find_angle, findDistance, findModeKneeAngle, _show_feedback, \
                     save_keyframe_csv, save_keyframe_json, scaledTo, draw_rounded_rect, draw_text, \
-                    cropEasy, overlayImage, baseWidthHeight, save_keyframe_image, append_status_entry
+                    cropEasy, overlayImage, baseWidthHeight, save_keyframe_image, append_status_entry, \
+                    _show_mistake_point_feedback
 
 class ProcessFrame:
     
@@ -133,7 +134,7 @@ class ProcessFrame:
 
         self.MISTAKE_ID_MAP = {
             0: ('TOO BEND FORWARD', 300, self.COLORS['neo_blue']),
-            1: ('TO BEND ONE\'S HEAD TOO MUCH', 250, self.COLORS['neo_blue']),
+            1: ('BEND HEAD TOO MUCH', 250, self.COLORS['neo_blue']),
             2: ('KNEE EXTEND BEYOND TOE', 200, self.COLORS['neo_blue']),
             3: ('SQUAT INCORRECT DEPTH', 150, self.COLORS['neo_blue']),
             4: ('FOOT FLOATING', 100, self.COLORS['neo_blue']),
@@ -393,11 +394,6 @@ class ProcessFrame:
                             self.COLORS['orange'], 2)
                     cv2.line(frame, im_point_FloatHeel, foot_coord,
                             self.COLORS['neo_blue'], 2)
-                    
-                    floatheel_angle = find_angle(heel_coord, im_point_FloatHeel, foot_coord) 
-                    
-                    cv2.putText(frame, str(floatheel_angle), foot_coord,
-                            self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
                     #? end by khao---------------->
 
                     # ------------------------------------------ After calculate angle to change state
@@ -427,25 +423,36 @@ class ProcessFrame:
 
                             #? add by khao---------------->
                             #ถ้าจุดใดใน 4 จุดผิด ให้แสดงสีแดง
-                            im_point_ear = np.array([shoulder_coord[0], shoulder_coord[1]+int(50*ratio_h)])
-                            ear_degree_variance = find_angle(ear_coord, im_point_ear,shoulder_coord)
-                            if (ear_degree_variance > self.thresholds['EAR_DEGREE_VARIANCE']):
+                            im_point_ear = np.array([shoulder_coord[0], 0])
+                            EAR_DEGREE_VARIANCE = find_angle(ear_coord, im_point_ear, shoulder_coord)
+                            if (EAR_DEGREE_VARIANCE > self.thresholds['EAR_DEGREE_VARIANCE']):
                                 self.state_tracker['POINT_OF_MISTAKE'][1] = True
+                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[1], EAR_DEGREE_VARIANCE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, ear_coord)
-                            # threshold
-                            if abs(knee_coord[0] - foot_coord[0])> self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
+
+                            KNEE_EXTEND_BEYOND_TOE_VALUE = abs(knee_coord[0] - foot_coord[0])
+                            if KNEE_EXTEND_BEYOND_TOE_VALUE > self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
                                 self.state_tracker['POINT_OF_MISTAKE'][2] = True
                                 self.state_tracker['INCORRECT_POSTURE'] = True
+                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[2], KNEE_EXTEND_BEYOND_TOE_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, knee_coord)
 
-                            if(floatheel_angle > self.thresholds['HEEL_FLOAT_VARIANCE']):
-                                # print("Heel Floating!!!")
+                            HEEL_FLOAT_VALUE = find_angle(heel_coord, im_point_FloatHeel, foot_coord) 
+                            cv2.putText(frame, str(HEEL_FLOAT_VALUE), foot_coord,
+                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                            if(HEEL_FLOAT_VALUE > self.thresholds['HEEL_FLOAT_VARIANCE']):
                                 self.state_tracker['POINT_OF_MISTAKE'][4] = True
+                                self.state_tracker['INCORRECT_POSTURE'] = True
+                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[4], HEEL_FLOAT_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, heel_coord)
 
-                            if abs(hip_angle - ankle_angle) > self.thresholds['NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE']:
+                            # เมื่อความเอียงลำตัว > ความเอียงกระดูกแข้ง มากกว่า 10° 
+                            # • ลักษณะท่า: ลำตัวเอียงไปข้างหน้ามาก กระดูกแข้งตั้งตรง 
+                            NEUTRAL_BIAS_TRUNK_TIBIA_VALUE = abs(hip_angle - ankle_angle)
+                            if NEUTRAL_BIAS_TRUNK_TIBIA_VALUE > self.thresholds['NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE']:
                                 self.state_tracker['POINT_OF_MISTAKE'][5] = True
                                 self.state_tracker['INCORRECT_POSTURE'] = True
+                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[5], NEUTRAL_BIAS_TRUNK_TIBIA_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, shoulder_coord, hip_coord)
                             #? end by khao-------------------> 
 
@@ -668,9 +675,6 @@ class ProcessFrame:
 
                 self.state_tracker['INACTIVE_TIME_FRONT'] = 0.0
                 self.state_tracker['start_inactive_time_front'] = time.perf_counter()
-
-            frame = _show_feedback(frame, self.state_tracker['POINT_OF_MISTAKE'], self.state_tracker['DISPLAY_DEPTH'],
-                                   self.MISTAKE_ID_MAP, self.SQUAT_DEPTH_ID_MAP, self.state_tracker['INCORRECT_POSTURE'])                
 
         except Exception as e:  # ตรวจจับไม่ได้สักจุด
             el = time.time() - self.st

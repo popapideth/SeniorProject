@@ -33,7 +33,7 @@ def get_thresholds(camrera_screen_width, camera_screen_height):
 
         #? add by khao---------------->
         'HEEL_FLOAT_VARIANCE':15, # deg
-        'EAR_DEGREE_VARIANCE': 20, # deg
+        'EAR_DEGREE_VARIANCE': 30, # deg
         #? end by khao---------------->
 
         'INACTIVE_THRESH': 15.0, # time count second
