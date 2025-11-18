@@ -115,6 +115,10 @@ def _similarity_cb(val):
         save_user_data()
         print(f"user_data['rep']: {user_data['reps']}")
 
+        # Save to Database
+        with app.app_context():
+            saveToDatabase(record)
+
         try:
             with state['lock']:
                 state['last_depth_text'] = depth_text
@@ -541,6 +545,7 @@ def save_user_data():
         os.replace(tmp, USER_DATA_PATH)
     except Exception as e:
         print(f"Failed to save user_data to {USER_DATA_PATH}:", e)
+
 load_user_data()
 
 def saveToDatabase(record):
@@ -579,6 +584,8 @@ def saveToDatabase(record):
             cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time))       
             conn.commit()
 
+            print("📥 Repetition saved! 📥")
+
             # Insert data to sessions
             summary = calculate_summary()
             total_count = summary['total']
@@ -598,7 +605,7 @@ def saveToDatabase(record):
             conn.commit()
             cursor.close()
             conn.close()
-            print("DB saved successfully!")
+            print("📦 DB saved successfully!")
             return {
                 'message': 'Session with Repetitions created success',
                 'session_id': session_id

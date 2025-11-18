@@ -133,7 +133,7 @@ class ProcessFrame:
 
         self.MISTAKE_ID_MAP = {
             0: ('TOO BEND FORWARD', 300, self.COLORS['neo_blue']),
-            1: ('TOO BEND BACKWARDS', 250, self.COLORS['neo_blue']),
+            1: ('TO BEND ONE\'S HEAD TOO MUCH', 250, self.COLORS['neo_blue']),
             2: ('KNEE EXTEND BEYOND TOE', 200, self.COLORS['neo_blue']),
             3: ('SQUAT INCORRECT DEPTH', 150, self.COLORS['neo_blue']),
             4: ('FOOT FLOATING', 100, self.COLORS['neo_blue']),
@@ -187,7 +187,7 @@ class ProcessFrame:
 
         #? add by khao---------------->
         ratio_w, ratio_h = scaledTo(frame_width, frame_height)
-        print("ratio_w/h:", ratio_w, ratio_h)
+        # print("ratio_w/h:", ratio_w, ratio_h)
         #? end by khao---------------->
 
         # Recolor image
@@ -201,17 +201,17 @@ class ProcessFrame:
         frame = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         try:
-            if not results.pose_landmarks:
-                print("[DEBUG] ⚠️ No pose landmarks detected (pose.process returned None)")
+            # if not results.pose_landmarks:
+            #     print("[DEBUG] ⚠️ No pose landmarks detected (pose.process returned None)")
             
             init_landmarks = results.pose_landmarks.landmark
 
             # Render detection
             self.mp_drawing.draw_landmarks(frame, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
                                     self.mp_drawing.DrawingSpec(
-                                        color = self.COLORS['light_green'], thickness=1*ratio_w, circle_radius=2*ratio_w),
+                                        color = self.COLORS['light_green'], thickness=int(1*ratio_w), circle_radius=int(2*ratio_w)),
                                     self.mp_drawing.DrawingSpec(
-                                        color = self.COLORS['light_blue'], thickness=1*ratio_w, circle_radius=2*ratio_w),
+                                        color = self.COLORS['light_blue'], thickness=int(1*ratio_w), circle_radius=int(2*ratio_w)),
                                     )
 
             if init_landmarks[self.mp_pose.PoseLandmark.NOSE].visibility > 0.5:
@@ -333,12 +333,15 @@ class ProcessFrame:
                                     thickness=2) if shoulder_angle > 0 else None
                         #? end by khao---------------->
 
-                        cv2.ellipse(frame, (hip_coord[0], hip_coord[1]-int(10*ratio_h)), (int(30*ratio_w), int(30*ratio_h)), angle=0, startAngle=-90, endAngle=-90 + multiplier*hip_angle,
+                        cv2.ellipse(frame, (hip_coord[0], hip_coord[1]), (int(20*ratio_w), int(20*ratio_h)), angle=0, startAngle=-90, endAngle=-90 + multiplier*hip_angle,
                                     color=self.COLORS['white'], thickness=1) if hip_angle > 0 else None
-                        cv2.ellipse(frame, (knee_coord[0], knee_coord[1]-int(10*ratio_h)), (int(30*ratio_w), int(30*ratio_h)), angle=0, startAngle=-90, endAngle=-90 - multiplier*knee_angle,
+                        cv2.ellipse(frame, (knee_coord[0], knee_coord[1]), (int(20*ratio_w), int(20*ratio_h)), angle=0, startAngle=-90, endAngle=-90 - multiplier*knee_angle,
                                     color=self.COLORS['white'], thickness=1) if knee_angle > 0 else None
-                        cv2.ellipse(frame, (ankle_coord[0], ankle_coord[1]-int(10*ratio_h)), (int(30*ratio_w), int(30*ratio_h)), angle=0, startAngle=-90, endAngle=-90 + multiplier*ankle_angle,
+                        cv2.ellipse(frame, (ankle_coord[0], ankle_coord[1]), (int(20*ratio_w), int(20*ratio_h)), angle=0, startAngle=-90, endAngle=-90 + multiplier*ankle_angle,
                                     color=self.COLORS['white'], thickness=1) if ankle_angle > 0 else None
+                        # cv2.ellipse(frame, (ankle_coord[0], ankle_coord[1]-int(10*ratio_h)), (int(15*ratio_w), int(15*ratio_h)), angle=0, startAngle=-90, endAngle=-90 + multiplier*ankle_angle,
+                        #             color=self.COLORS['white'], thickness=1) if ankle_angle > 0 else None
+
 
                         # draw perpendicular line
                         for idx in chosen_joints:
@@ -417,35 +420,34 @@ class ProcessFrame:
                     else:
                         if current_state == 's2':
 
-                            #? add by khao---------------->
-                            #ถ้าจุดใดใน 4 จุดผิด ให้แสดงสีแดง
-                            # threshold
-                            if abs(knee_coord[0] - foot_coord[0])> self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
-                                self.state_tracker['INCORRECT_POSTURE'] = True
-                                self.state_tracker['POINT_OF_MISTAKE'][2] = True
-                                frame = self.spotMistakePoint(frame, self.COLORS, knee_coord)
-
-                            if abs(hip_angle - ankle_angle) > self.thresholds['NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE']:
-                                self.state_tracker['INCORRECT_POSTURE'] = True
-                                self.state_tracker['POINT_OF_MISTAKE'][2] = True
-
-                                frame = self.spotMistakePoint(frame, self.COLORS, shoulder_coord, hip_coord)
-                            
-                            if(floatheel_angle > self.thresholds['HEEL_FLOAT_VARIANCE']):
-                                # print("Heel Floating!!!")
-                                frame = self.spotMistakePoint(frame, self.COLORS, heel_coord)
-
-                            im_point_ear = np.array([shoulder_coord[0], shoulder_coord[1]+int(50*ratio_h)])
-                            ear_degree_variance = find_angle(ear_coord, im_point_ear,shoulder_coord)
-                            if (ear_degree_variance > self.thresholds['EAR_DEGREE_VARIANCE']):
-                                frame = self.spotMistakePoint(frame, self.COLORS, ear_coord)
-
-                            #? end by khao-------------------> 
-
                             if self.state_tracker['INCORRECT_POSTURE']:
                                 self.state_tracker['DISPLAY_DEPTH'][:] = False
                                 self.state_tracker['POINT_OF_MISTAKE'][:] = False
                                 self.state_tracker['INCORRECT_POSTURE'] = not self.state_tracker['INCORRECT_POSTURE']
+
+                            #? add by khao---------------->
+                            #ถ้าจุดใดใน 4 จุดผิด ให้แสดงสีแดง
+                            im_point_ear = np.array([shoulder_coord[0], shoulder_coord[1]+int(50*ratio_h)])
+                            ear_degree_variance = find_angle(ear_coord, im_point_ear,shoulder_coord)
+                            if (ear_degree_variance > self.thresholds['EAR_DEGREE_VARIANCE']):
+                                self.state_tracker['POINT_OF_MISTAKE'][1] = True
+                                frame = self.spotMistakePoint(frame, self.COLORS, ear_coord)
+                            # threshold
+                            if abs(knee_coord[0] - foot_coord[0])> self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
+                                self.state_tracker['POINT_OF_MISTAKE'][2] = True
+                                self.state_tracker['INCORRECT_POSTURE'] = True
+                                frame = self.spotMistakePoint(frame, self.COLORS, knee_coord)
+
+                            if(floatheel_angle > self.thresholds['HEEL_FLOAT_VARIANCE']):
+                                # print("Heel Floating!!!")
+                                self.state_tracker['POINT_OF_MISTAKE'][4] = True
+                                frame = self.spotMistakePoint(frame, self.COLORS, heel_coord)
+
+                            if abs(hip_angle - ankle_angle) > self.thresholds['NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE']:
+                                self.state_tracker['POINT_OF_MISTAKE'][5] = True
+                                self.state_tracker['INCORRECT_POSTURE'] = True
+                                frame = self.spotMistakePoint(frame, self.COLORS, shoulder_coord, hip_coord)
+                            #? end by khao-------------------> 
 
                             if self.state_tracker['prev_knee_angle'] is not None:
                                 delta = abs(knee_angle - self.state_tracker['prev_knee_angle'])
@@ -457,7 +459,6 @@ class ProcessFrame:
 
                                 else:
                                     self.state_tracker['stable_pose_time_count'] = 0
-
                                 # ถ้านิ่งต่อเนื่องพอ -> เก็บ keyframe
                                 # threshold
                                 if self.state_tracker['stable_pose_time_count'] >= self.thresholds['STABLE_POSE_TIME_COUNT']:
@@ -474,7 +475,7 @@ class ProcessFrame:
                                     })
 
                                     print(
-                                        f"select frame: {self.state_tracker['selected_frame'][-1]['angles']}")
+                                        f"📝 select frame: {self.state_tracker['selected_frame'][-1]['angles']}")
 
                                     self.state_tracker['selected_frame_count'] += 1
                                     self.state_tracker['stable_pose_time_count'] = 0
@@ -502,7 +503,7 @@ class ProcessFrame:
                             keyframe=self.state_tracker['keyframe'], option=1)
                         
                         
-                        print(f"Keyframe: {self.state_tracker['keyframe']['angles']}")
+                        print(f"✅ Keyframe: {self.state_tracker['keyframe']['angles']}")
                         
                         #cosine 127,39,98,32
                         # เก็บค่า trainer vector สำหรับเปรียบเทียบ
@@ -647,6 +648,7 @@ class ProcessFrame:
 
                 # ------------------------------------------
             else:
+
                 end_time = time.perf_counter()
                 self.state_tracker['INACTIVE_TIME'] += end_time - \
                     self.state_tracker['start_inactive_time']
@@ -666,6 +668,9 @@ class ProcessFrame:
 
                 self.state_tracker['INACTIVE_TIME_FRONT'] = 0.0
                 self.state_tracker['start_inactive_time_front'] = time.perf_counter()
+
+            frame = _show_feedback(frame, self.state_tracker['POINT_OF_MISTAKE'], self.state_tracker['DISPLAY_DEPTH'],
+                                   self.MISTAKE_ID_MAP, self.SQUAT_DEPTH_ID_MAP, self.state_tracker['INCORRECT_POSTURE'])                
 
         except Exception as e:  # ตรวจจับไม่ได้สักจุด
             el = time.time() - self.st

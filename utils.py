@@ -159,10 +159,10 @@ def _show_feedback(frame, point_of_mistake, display_depth, mistake_dict_maps, sq
                 draw_text(
                     frame,
                     mistake_dict_maps[idx][0],
-                    pos=(int(30*ratio_w),
+                    pos=(int(60*ratio_w),
                         int(mistake_dict_maps[idx][1]*ratio_h)),
                     text_color=(255, 255, 230),
-                    font_scale=0.6,
+                    font_scale=0.4,
                     text_color_bg=mistake_dict_maps[idx][2]
                 )
 
@@ -217,7 +217,7 @@ def draw_text(
     font=cv2.FONT_HERSHEY_SIMPLEX,
     pos=(0, 0),
     font_scale=1,
-    font_thickness=2,
+    font_thickness=1,
     text_color=(0, 255, 0),
     text_color_bg=(0, 0, 0),
     box_offset=(20, 10),
