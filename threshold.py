@@ -28,9 +28,10 @@ def get_thresholds(camrera_screen_width, camera_screen_height):
         'STABLE_POSE_TIME_COUNT': 0.25,  # time count second
         'OFFSET_SHOULDERS_X': 40*ratio_w,
         'OFFSET_ANKLES_X': 40*ratio_w,
+
+
         'NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE': 10,  # deg
         'KNEE_EXTEND_BEYOND_TOE': 15*ratio_w,
-
         #? add by khao---------------->
         'HEEL_FLOAT_VARIANCE':15, # deg
         'EAR_DEGREE_VARIANCE': 30, # deg
