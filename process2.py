@@ -424,10 +424,10 @@ class ProcessFrame:
                             #? add by khao---------------->
                             #ถ้าจุดใดใน 4 จุดผิด ให้แสดงสีแดง
                             im_point_ear = np.array([shoulder_coord[0], 0])
-                            EAR_DEGREE_VALUE = find_angle(ear_coord, im_point_ear, shoulder_coord)
-                            if (EAR_DEGREE_VALUE > self.thresholds['EAR_DEGREE_VARIANCE']):
+                            HEAD_DEGREE_VALUE = find_angle(ear_coord, im_point_ear, shoulder_coord)
+                            if (HEAD_DEGREE_VALUE > self.thresholds['EAR_DEGREE_VARIANCE']):
                                 self.state_tracker['POINT_OF_MISTAKE'][1] = True
-                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[1], EAR_DEGREE_VALUE)                
+                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[1], HEAD_DEGREE_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, ear_coord)
 
                             KNEE_EXTEND_BEYOND_TOE_VALUE = abs(knee_coord[0] - foot_coord[0])
@@ -479,10 +479,10 @@ class ProcessFrame:
                                             'ankle': ankle_angle
                                         },
                                         'user_criteria': {
-                                            '': EAR_DEGREE_VALUE,
-                                            '': KNEE_EXTEND_BEYOND_TOE_VALUE,
-                                            '': HEEL_FLOAT_VALUE,
-                                            '': NEUTRAL_BIAS_TRUNK_TIBIA_VALUE
+                                            'head_variance': HEAD_DEGREE_VALUE,
+                                            'knee_variance': KNEE_EXTEND_BEYOND_TOE_VALUE,
+                                            'heel_variance': HEEL_FLOAT_VALUE,
+                                            'trunk_variance': NEUTRAL_BIAS_TRUNK_TIBIA_VALUE
                                         },
                                         'landmarks': init_landmarks,
                                     })
@@ -518,7 +518,7 @@ class ProcessFrame:
                         
                         print(f"✅ Keyframe: {self.state_tracker['keyframe']['angles']}")
 
-                        # print(f"✅ Keyframe: {self.state_tracker['keyframe']['user_criteria']}")
+                        print(f"⁉️ User criteria: {self.state_tracker['keyframe']['user_criteria']}")
                         
                         #cosine 127,39,98,32
                         # เก็บค่า trainer vector สำหรับเปรียบเทียบ
