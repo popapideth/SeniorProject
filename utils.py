@@ -351,8 +351,6 @@ def scaledTo(width, height):
 
     return display_scale_x, display_scale_y
 
-
-
 #---------------------- Dusit function>
 import time as _time
 
