@@ -1,10 +1,10 @@
-import os
-import json
-import statistics
-
 import cv2
+import json
 import numpy as np
+import os
 import pandas as pd
+import statistics
+import time as time
 
 def get_landmark_coord(pose_landmark, key, frame_width=640, frame_height=480):
     mark_x = int(pose_landmark[key].x * frame_width)
@@ -351,9 +351,9 @@ def scaledTo(width, height):
 
     return display_scale_x, display_scale_y
 
-#---------------------- Dusit function>
-import time as _time
 
+
+#---------------------- Dusit function>
 KEYFRAME_DIR = os.path.join("static", "keyframes")
 STATUS_JSON = os.path.join("static", "status.json")
 
@@ -362,10 +362,9 @@ def ensure_dir(path):
 
 def save_keyframe_image(frame_bgr, role="user"):
     ensure_dir(KEYFRAME_DIR)
-    ts = int(_time.time() * 1000)
+    ts = int(time.time() * 1000)
     fname = f"{role}_{ts}.jpg"
     full_path = os.path.join(KEYFRAME_DIR, fname)
-    import cv2
     cv2.imwrite(full_path, frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
     return "/" + full_path.replace(os.path.sep, "/")
 
@@ -380,7 +379,7 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None,
         status = {"keyframes": [], "rounds_count": 0}
 
     entry = {
-        "timestamp": int(_time.time() * 1000),
+        "timestamp": int(time.time() * 1000),
         "user_image": user_image_url,
         "similarity": float(similarity) if similarity is not None else None,
         "user_vec": user_vec,

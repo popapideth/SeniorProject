@@ -522,41 +522,30 @@ class ProcessFrame:
                         
                         #cosine 127,39,98,32
                         # เก็บค่า trainer vector สำหรับเปรียบเทียบ
-                        w1 = 0.1
-                        w2 = 0.2
-                        w3 = 0.6
-                        w4 = 0.1
+                        w = np.array([0.1, 0.3, 0.4, 0.2], dtype=float)  # shoulder, hip, knee, ankle
+
                         trainer_vec = np.array([127, 39, 98, 32], dtype=float)
-                        
-                        # สร้าง user vector จากมุมต่างๆ
+
                         user_vec = np.array([
                             self.state_tracker['keyframe']['angles']['shoulder'],
                             self.state_tracker['keyframe']['angles']['hip'],
                             self.state_tracker['keyframe']['angles']['knee'], 
                             self.state_tracker['keyframe']['angles']['ankle']
                         ], dtype=float)
-                        
-                        # เก็บค่า vector ล่าสุดใน state_tracker เพื่อส่งไปยัง frontend
+
                         self.state_tracker['latest_user_vec'] = user_vec.tolist()
 
-                        # Normalize to 0-1 by dividing by 180 and clipping
-                        trainer_normalized = np.clip(trainer_vec / 180.0, 0, 1)
-                        user_normalized = np.clip(user_vec / 180.0, 0, 1)
+                        trainer_norm = trainer_vec / 180.0
+                        user_norm = np.clip(user_vec / 180.0, 0, 1)
                         
-                        ''' scaler = MinMaxScaler()
-                        stacked = np.vstack([trainer_vec, user_vec])
-                        stacked_scaled = scaler.fit_transform(stacked)
+                        #คำนวณ similarity cosine
+                        """ cos_sim = cosine_similarity(trainer_norm.reshape(1, -1), user_norm.reshape(1, -1))[0][0]
+                        similarity_percentage = float(cos_sim * 100) """
 
-                        trainer_normalized = stacked_scaled[0]
-                        user_normalized = stacked_scaled[1] '''
-                        
-                        ''' co_sim = float(cosine_similarity([trainer_norm], [user_norm ])[0][0])
-                        co_percentage = round(co_sim * 100, 2) '''
+                        diff = 1 - np.abs(trainer_norm - user_norm)
+                        angle_similarity = diff * 100
 
-                        diff = 1 - np.abs(trainer_normalized - user_normalized)
-                        angle_similarity = diff * 100 #ของแต่ละมุม
-                        total_similarity = angle_similarity.mean() #ค่าเฉลี่ย
-
+                        total_similarity = float(np.sum(angle_similarity * w))
 
                         print("Similarity per angle:", angle_similarity)
                         print(f"Average similarity: {total_similarity:.2f}%")
@@ -564,8 +553,6 @@ class ProcessFrame:
                         print(f"---------------------------------------")
                         print("trainer_vec:", trainer_vec)
                         print("user_vec:", user_vec)
-                        print("trainer_normalized:", trainer_normalized)
-                        print("user_normalized:", user_normalized)
                         print(f"---------------------------------------") 
                         
                         
@@ -617,7 +604,8 @@ class ProcessFrame:
                                     "depth_value": current_depth,
                                     "user_vec": user_vec.tolist(),
                                     "rep_number": self.state_tracker['rounds_count'],
-                                    "timestamp": time.time()
+                                    "timestamp": time.time(),
+                                    "user_criteria": self.state_tracker['keyframe']['user_criteria'] if self.state_tracker.get('keyframe') and self.state_tracker['keyframe'] is not None and 'user_criteria' in self.state_tracker['keyframe'] else None,
                                 }
                                 self.similarity_callback(data)
                                 print(f"DEBUG - Sending depth data: {depth_text} (value: {current_depth})")
