@@ -428,6 +428,8 @@
                       const j = await rsum.json();
                       document.getElementById("summary_total").innerText =
                         j.total;
+                      document.getElementById("summary_dept").innerText =
+                        j.dept_correct;
                       document.getElementById("summary_correct").innerText =
                         j.correct;
                       document.getElementById("summary_incorrect").innerText =
@@ -670,6 +672,7 @@
           const r = await fetch("/summary");
           const j = await r.json();
           document.getElementById("summary_total").innerText = j.total;
+          document.getElementById("summary_dept").innerText = j.dept_correct;
           document.getElementById("summary_correct").innerText = j.correct;
           document.getElementById("summary_incorrect").innerText = j.incorrect;
           document.getElementById("summary_avg").innerText =

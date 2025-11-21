@@ -451,10 +451,11 @@ def get_reps():
 
         return jsonify({
             'reps': reps,
-            'average': summary['average'],
-            'total': summary['total'],
-            'correct': summary['correct'],
-            'incorrect': summary['incorrect'],
+            'average': summary()['average'],
+            'total': summary()['total'],
+            'dept_correct': summary()['dept_correct'],
+            'correct': summary()['correct'],
+            'incorrect': summary()['incorrect'],
         })
 
     except Exception as e:
@@ -570,7 +571,7 @@ def calculate_summary():
         if sim_val >= CORRECT_THRESH and depth_matches and criteria_pass:
             correct += 1
 
-    incorrect = dept_correct - correct
+    incorrect = total - correct
 
     return {
         'total': total,
