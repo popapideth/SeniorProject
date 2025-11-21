@@ -1,12 +1,12 @@
 import cv2
-import numpy as np
+import matplotlib.pyplot as plt
 import mediapipe as mp
-import time
+import numpy as np
 import pandas as pd
+import time
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.spatial.distance import euclidean
-import matplotlib.pyplot as plt
 #import seaborn as sns
 
 from screeninfo import get_monitors
@@ -681,10 +681,10 @@ class ProcessFrame:
         return frame
 
     DEPTH_MAP = {
-        0: "Quarter Squat (45)",
-        1: "Half Squat (60)",
-        2: "Parallel Squat (90)",
-        3: "Full Squat (120)",
+        0: "Quarter Squat (45-60)",
+        1: "Half Squat (61-80)",
+        2: "Parallel Squat (81-100)",
+        3: "Full Squat (101-120)",
         4: "Improper Squat"
     }
 
