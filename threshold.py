@@ -21,17 +21,23 @@ def get_thresholds(camrera_screen_width, camera_screen_height):
         'FULL': (101, 120),
     }
     thresholds = {
-        'HIP_VERT': _ANGLE_HIP_VERT,
-        'KNEE_VERT': _ANGLE_KNEE_VERT,
-        'SQUAT_DEPTHS': _SQUAT_DEPTH,
+        'HIP_VERT': _ANGLE_HIP_VERT, # deg
+        'KNEE_VERT': _ANGLE_KNEE_VERT, # deg
+        'SQUAT_DEPTHS': _SQUAT_DEPTH, # deg
         'DELTA_TRANS_KNEE_ANGLE': 2,  # deg
-        'STABLE_POSE_TIME_COUNT': 0.25,  # time count
+        'STABLE_POSE_TIME_COUNT': 0.25,  # time count second
         'OFFSET_SHOULDERS_X': 40*ratio_w,
         'OFFSET_ANKLES_X': 40*ratio_w,
+
+
         'NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE': 10,  # deg
         'KNEE_EXTEND_BEYOND_TOE': 15*ratio_w,
+        #? add by khao---------------->
+        'HEEL_FLOAT_VARIANCE':15, # deg
+        'EAR_DEGREE_VARIANCE': 30, # deg
+        #? end by khao---------------->
 
-        'INACTIVE_THRESH': 15.0,
+        'INACTIVE_THRESH': 15.0, # time count second
     }
     return thresholds
 
