@@ -679,7 +679,7 @@ class ProcessFrame:
                 self.st = time.time()
             pass
         return frame
-### test
+### test1024,4 +1024,7 @@
     DEPTH_MAP = {
         0: "Quarter Squat (45-60)",
         1: "Half Squat (61-80)",
