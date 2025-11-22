@@ -681,10 +681,10 @@ class ProcessFrame:
         return frame
 
     DEPTH_MAP = {
-        0: "Quarter Squat (45)",
-        1: "Half Squat (60)",
-        2: "Parallel Squat (90)",
-        3: "Full Squat (120)",
+        0: "Quarter Squat (45-60)",
+        1: "Half Squat (61-80)",
+        2: "Parallel Squat (81-100)",
+        3: "Full Squat (101-120)",
         4: "Improper Squat"
     }
 
