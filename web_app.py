@@ -111,6 +111,12 @@ def _similarity_cb(val):
                 else:
                     criteria_results[k] = None
 
+        if user_criteria:
+            print("User criteria:")
+            for k, v in user_criteria.items():
+                passed = criteria_results.get(k)
+                print(f"  {k}: {v} {'✓' if passed else '✗'} (threshold: {criteria_thresholds.get(k)})")
+
         with state['lock']:
             state['last_similarity'] = similarity
 
@@ -126,6 +132,10 @@ def _similarity_cb(val):
             depth_idx_normalized = depth_idx
 
         target_depth = session.get('target_depth')
+        target_txt = processor.DEPTH_MAP.get(target_depth)
+        
+        print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
+        
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
 
         is_correct = (sim_val >= CORRECT_THRESH) and depth_matches and criteria_pass
@@ -135,13 +145,13 @@ def _similarity_cb(val):
             "similarity": sim_val,
             "depth": depth_text,
             "depth_value": depth_idx_normalized,
+            "target_txt": target_txt,
+            "target_depth": target_depth,
             "user_vec": user_vec,
             "timestamp": int(timestamp * 1000),
             "rep_number": rep_number + 1,
             "isCorrect": bool(is_correct),
             "depth_match": bool(depth_matches),
-            "target_txt": target_depth,
-            "target_depth": target_depth,
             "user_criteria": user_criteria,
             "criteria_results": criteria_results,
         }
@@ -539,7 +549,7 @@ def get_keyframes():
 def calculate_summary():
     reps = user_data.get('reps', [])
     target_depth = session.get('target_depth', None)
-
+    
     # filter
     if target_depth is not None:
         filtered = [r for r in reps if r.get('depth_value') == target_depth]
@@ -566,7 +576,8 @@ def calculate_summary():
             
         
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
-
+        
+   #######ยังได้เช็ค
         user_criteria = None
         if isinstance(r, dict):
             user_criteria = r.get('user_criteria')
@@ -592,7 +603,8 @@ def calculate_summary():
 
         if (sim_val >= CORRECT_THRESH) and (depth_matches) and (criteria_pass):
             correct += 1
-    
+            
+    #################
 
     incorrect = total - correct
 
