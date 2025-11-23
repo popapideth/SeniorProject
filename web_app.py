@@ -28,6 +28,7 @@ session = {
     'done_reps': 0,
     'running': False,
     'trainer_enabled': False,
+    'target_depth': None,
     'keyframes': []
 }
 
@@ -35,7 +36,9 @@ pose = get_mediapipe_pose()
 cap = cv2.VideoCapture(0)
 user_camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 user_camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
 thresholds = get_thresholds(user_camera_width, user_camera_height)
+capUser = (user_camera_width,user_camera_height)
 
 user_data = {
     "reps": [],
@@ -45,7 +48,6 @@ CORRECT_THRESH =85.0
 
 USER_DATA_PATH = os.path.join('static', 'user_data.json')
 
-# เก็บลงDatabase ในFuncนี้ ซึ่งจะถูกเรียกทุกครั้งที่ rep สำเร็จ
 def _similarity_cb(val):
     try:
         if val is None:
@@ -59,6 +61,8 @@ def _similarity_cb(val):
             similarity = float(val)
             rep_number = session.get("done_reps", 0) + 1
             timestamp = time.time()
+
+        print(f"rep_number: {rep_number}")
             
         if isinstance(val, dict):
             depth_text = val.get('depth')
@@ -84,6 +88,35 @@ def _similarity_cb(val):
             else None
         )
 
+        user_criteria = None
+        if isinstance(val, dict):
+            user_criteria = val.get('user_criteria')
+            
+        criteria_thresholds = {
+            'head_variance': thresholds.get('EAR_DEGREE_VARIANCE', 30),
+            'knee_variance': thresholds.get('KNEE_EXTEND_BEYOND_TOE', 15 * (user_camera_width / 640)),
+            'heel_variance': thresholds.get('HEEL_FLOAT_VARIANCE', 15),
+            'trunk_variance': thresholds.get('NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE', 10),
+        }
+
+        criteria_pass = True
+        criteria_results = {}
+        if user_criteria:
+            for k, v in user_criteria.items():
+                th = criteria_thresholds.get(k)
+                if th is not None:
+                    criteria_results[k] = abs(v) <= th
+                    if not criteria_results[k]:
+                        criteria_pass = False
+                else:
+                    criteria_results[k] = None
+                    
+        if user_criteria:
+            print("User criteria:")
+            for k, v in user_criteria.items():
+                passed = criteria_results.get(k)
+                print(f"  {k}: {v} {'✓' if passed else '✗'} (threshold: {criteria_thresholds.get(k)})")
+
         with state['lock']:
             state['last_similarity'] = similarity
 
@@ -92,24 +125,36 @@ def _similarity_cb(val):
 
         session['done_reps'] = rep_number
         sim_val = round(float(similarity), 2)
-        is_correct = sim_val >= CORRECT_THRESH
+
+        try:
+            depth_idx_normalized = depth_idx[0] if isinstance(depth_idx, (list, tuple)) and len(depth_idx) > 0 else depth_idx
+        except Exception:
+            depth_idx_normalized = depth_idx
+
+        target_depth = session.get('target_depth')
+        depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
+
+        is_correct = (sim_val >= CORRECT_THRESH) and depth_matches and criteria_pass
 
         record = {
             "user_image": f"/static/keyframes/frame_{int(timestamp * 1000)}.jpg",
             "similarity": sim_val,
             "depth": depth_text,
-            "depth_value": depth_idx,
+            "depth_value": depth_idx_normalized,
             "user_vec": user_vec,
             "timestamp": int(timestamp * 1000),
             "rep_number": rep_number + 1,
             "isCorrect": bool(is_correct),
+            "depth_match": bool(depth_matches),
+            "user_criteria": user_criteria,
+            "criteria_results": criteria_results,
         }
 
         session.setdefault("keyframes", []).append(record)
         user_data.setdefault("reps", []).append(record)
         save_user_data()
+        print(f"user_data['rep']: {user_data['reps']}")
 
-        # Save to Database
         with app.app_context():
             saveToDatabase(record)
 
@@ -131,26 +176,28 @@ def _similarity_cb(val):
 
 processor = ProcessFrame(thresholds=thresholds, similarity_callback=_similarity_cb)
 
-
 def gen_frames():
     try:
+        s_gf = time.time()  
         while True:
             success, frame = cap.read()
-            frame = cv2.flip(frame,1)
+            frame = cv2.flip(frame, 1)
+            
             if not success:
-                print("unSuccess")
                 break
             if session.get('running'):
                 frame = processor.process(frame, pose)
             else:
-                # put text
                 ignore = True
             sim = None
             with state['lock']:
                 sim = state.get('last_similarity')
-                # put text
-            if sim is not None:
+
+            elasped_s_gf = time.time() - s_gf
+            if sim is not None and session['running'] == True and elasped_s_gf>=1.0:
                 print(f"Current similarity: {sim}%")
+                s_gf = time.time()
+
             ret, buffer = cv2.imencode('.jpg', frame)
             frame_bytes = buffer.tobytes()
             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
@@ -158,7 +205,7 @@ def gen_frames():
         print("Client disconnected.")
     except Exception as e:
         print("Error in gen_frames:", e)
-
+        
 @app.route('/')
 def index():
     return render_template('index3.html')
@@ -178,10 +225,16 @@ def start_session():
     from flask import request
     data = request.get_json() or {}
     reps = int(data.get('reps', 0))
+    # เลือก 4 แบบ
+    depth_raw = data.get('depth', None)
+    try:
+        target_depth = int(depth_raw) if depth_raw is not None and str(depth_raw) != '' else None
+    except Exception:
+        target_depth = None
+
     if reps <= 0:
         return jsonify({'error': 'reps must be > 0'}), 400
 
-    # Reset shared state safely
     with state['lock']:
         state['last_similarity'] = None
         state['play_sound'] = False
@@ -190,7 +243,8 @@ def start_session():
         'done_reps': 0,
         'running': True,
         'keyframes': [],
-        'trainer_enabled': False
+        'trainer_enabled': False,
+        'target_depth': target_depth
     })
 
     # รีเซ็ตไฟล์บันทึก
@@ -210,7 +264,6 @@ def start_session():
     except Exception as e:
         print(f"[ERROR] Failed to initialize new session: {e}")
 
-    # รีเซ็ตค่าใน processor อย่างปลอดภัย
     try:
         if hasattr(processor, 'state_tracker'):
             tracker = processor.state_tracker
@@ -234,7 +287,8 @@ def start_session():
             tracker["prev_knee_angle"] = 0
             tracker["running"] = True
 
-            # รีเซ็ตค่าความลึก (depth system ใหม่)
+            # รีเซ็ตค่าความลึก
+            
             tracker["DISPLAY_DEPTH"] = [False] * len(
                 getattr(processor, "DEPTH_MAP", {0: ""})
             )
@@ -242,7 +296,6 @@ def start_session():
     except Exception as e:
         print(f"[ERROR] Failed to reset processor tracker: {e}")
 
-    # สร้าง สร้าง session แค่ครั้งเดียวตอนเริ่ม
     global current_session_id
     with app.app_context():
         conn = get_db_connection()
@@ -261,11 +314,12 @@ def start_session():
         conn.commit()
         cursor.close()
         conn.close()
-    print("🔵 New session created:", current_session_id)
+    print("New session created:", current_session_id)
 
     return jsonify({
         'ok': True,
         'target_reps': reps,
+        'target_depth': target_depth,
         'done_reps': 0,
         'running': True,
         'keyframes': [],
@@ -393,16 +447,26 @@ def trainer_exists():
 def get_reps():
     try:
         summary = calculate_summary()
+        reps = user_data.get('reps', [])
+
         return jsonify({
-            'reps': user_data.get('reps', []),
-            'average': summary.get('average', None),
-            'total': len(user_data.get('reps', [])),
-            'correct': summary.get('correct', 0),
-            'incorrect': summary.get('incorrect', 0),
+            'reps': reps,
+            'average': summary()['average'],
+            'total': summary()['total'],
+            'dept_correct': summary()['dept_correct'],
+            'correct': summary()['correct'],
+            'incorrect': summary()['incorrect'],
         })
+
     except Exception as e:
         print('Error in get_reps endpoint:', e)
-        return jsonify({'reps': [], 'total': 0})
+        return jsonify({
+            'reps': [],
+            'average': None,
+            'total': 0,
+            'correct': 0,
+            'incorrect': 0
+        })
 
 @app.route('/stop', methods=['POST'])
 def stop_session_route():
@@ -410,11 +474,11 @@ def stop_session_route():
     return jsonify({'ok': True})
 
 ## ตอนนี้ใช้ sims ในการคำนวน มี rule ที่ข้าวเขียนไว้แบบเทียบองศา ##
-###################เก็บลง database ## for rep in user_data["reps"]###########
 @app.route('/summary')
 def summary():
     return jsonify({
         'total': calculate_summary()['total'],
+        'dept_correct': calculate_summary()['dept_correct'],
         'correct': calculate_summary()['correct'],
         'incorrect': calculate_summary()['incorrect'],
         'average_similarity': calculate_summary()['average'],
@@ -477,15 +541,41 @@ def get_keyframes():
         })
         
 def calculate_summary():
-    kfs = session.get('keyframes', []) or []
-    total = len(kfs)
-    sims = [float(k.get('similarity') or 0.0) for k in kfs]
+    reps = user_data.get('reps', [])
+    target_depth = session.get('target_depth', None)
+
+    # filter
+    if target_depth is not None:
+        filtered = [r for r in reps if r.get('depth_value') == target_depth]
+    else:
+        filtered = reps
+
+    total = len(reps)
+    dept_correct = len(filtered)
+
+    sims = [float(r.get('similarity') or 0.0) for r in filtered]
     avg = round(statistics.mean(sims), 2) if sims else None
+
     CORRECT_THRESH = 85.0
-    correct = sum(1 for s in sims if s >= CORRECT_THRESH)
+
+    correct = 0
+    for r in filtered:
+        sim_val = float(r.get('similarity') or 0.0)
+        depth_matches = (r.get('depth_value') == target_depth) if target_depth is not None else True
+
+        criteria_pass = True
+        crit_res = r.get('criteria_results')
+        if crit_res:
+            criteria_pass = all(v is True for v in crit_res.values())
+
+        if sim_val >= CORRECT_THRESH and depth_matches and criteria_pass:
+            correct += 1
+
     incorrect = total - correct
+
     return {
         'total': total,
+        'dept_correct': dept_correct,
         'correct': correct,
         'incorrect': incorrect,
         'average': avg,
@@ -527,14 +617,31 @@ def load_user_data():
         pass
 
 def save_user_data():
+    import numpy as np
+    def convert_np(obj):
+        import numpy as np
+        if isinstance(obj, dict):
+            return {k: convert_np(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_np(v) for v in obj]
+        elif isinstance(obj, (np.integer, np.int32, np.int64)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float32, np.float64)):
+            return float(obj)
+        elif isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        else:
+            return obj
     try:
         os.makedirs(os.path.dirname(USER_DATA_PATH), exist_ok=True)
         tmp = USER_DATA_PATH + '.tmp'
+        user_data_clean = convert_np(user_data)
         with open(tmp, 'w', encoding='utf-8') as f:
-            json.dump(user_data, f, ensure_ascii=False, indent=2)
+            json.dump(user_data_clean, f, ensure_ascii=False, indent=2)
         os.replace(tmp, USER_DATA_PATH)
     except Exception as e:
         print(f"Failed to save user_data to {USER_DATA_PATH}:", e)
+
 load_user_data()
 
 def saveToDatabase(record):
@@ -573,6 +680,8 @@ def saveToDatabase(record):
             cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time))       
             conn.commit()
 
+            print("Repetition saved!")
+
             # Insert data to sessions
             summary = calculate_summary()
             total_count = summary['total']
@@ -603,5 +712,6 @@ def saveToDatabase(record):
             'message': 'Error saving to DB',
             'error': str(e)
         }
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)

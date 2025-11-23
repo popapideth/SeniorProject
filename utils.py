@@ -11,6 +11,8 @@ def get_landmark_coord(pose_landmark, key, frame_width=640, frame_height=480):
     mark_y = int(pose_landmark[key].y * frame_height)
     return np.array([mark_x, mark_y])
 
+#? add by khao---------------->
+# heel_coord , ear_coord
 def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, frame_height):
     if (direction == 'nose'):
         nose_coord = get_landmark_coord(
@@ -18,6 +20,10 @@ def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, f
         return nose_coord
 
     elif (direction == 'left' or 'right'):
+        #? add by khao---------------->
+        ear_coord = get_landmark_coord(
+            mp_results, dict_features[direction]['ear'], frame_width, frame_height)
+        #? end by khao---------------->
         shoulder_coord = get_landmark_coord(
             mp_results, dict_features[direction]['shoulder'], frame_width, frame_height)
         elbow_coord = get_landmark_coord(
@@ -30,13 +36,19 @@ def get_chosen_joints_coord(mp_results, dict_features, direction, frame_width, f
             mp_results, dict_features[direction]['knee'], frame_width, frame_height)
         ankle_coord = get_landmark_coord(
             mp_results, dict_features[direction]['ankle'], frame_width, frame_height)
+        #? add by khao---------------->
+        heel_coord = get_landmark_coord(
+            mp_results, dict_features[direction]['heel'], frame_width, frame_height)
+        #? end by khao---------------->
         foot_coord = get_landmark_coord(
             mp_results, dict_features[direction]['foot'], frame_width, frame_height)
 
-        return shoulder_coord, elbow_coord, wrist_coord, hip_coord, knee_coord, ankle_coord, foot_coord
+        #? end by khao---------------->
+        return ear_coord, shoulder_coord, elbow_coord, wrist_coord, hip_coord, knee_coord, ankle_coord, heel_coord, foot_coord
+        #? add by khao---------------->
     else:
         raise ValueError("feature needs to be either 'nose', 'left' or 'right")
-
+#? end by khao---------------->
 
 def find_angle(a, c, b=np.array([0, 0])):
     p1_ref = a - b
@@ -147,10 +159,10 @@ def _show_feedback(frame, point_of_mistake, display_depth, mistake_dict_maps, sq
                 draw_text(
                     frame,
                     mistake_dict_maps[idx][0],
-                    pos=(int(30*ratio_w),
+                    pos=(int(60*ratio_w),
                         int(mistake_dict_maps[idx][1]*ratio_h)),
                     text_color=(255, 255, 230),
-                    font_scale=0.6,
+                    font_scale=0.4,
                     text_color_bg=mistake_dict_maps[idx][2]
                 )
 
@@ -169,6 +181,25 @@ def _show_feedback(frame, point_of_mistake, display_depth, mistake_dict_maps, sq
 
     return frame
 
+#? add by khao---------------->
+def _show_mistake_point_feedback(frame, mistake_dict_maps, value=0):
+    h, w = frame.shape[:2]
+    ratio_w, ratio_h = scaledTo(w, h)
+    try:
+        draw_text(
+            frame,
+            ""+mistake_dict_maps[0]+" : "+str(value),
+            pos=(int(60*ratio_w),
+                int(mistake_dict_maps[1]*ratio_h)),
+            text_color=(255, 255, 230),
+            font_scale=0.4,
+            text_color_bg=mistake_dict_maps[2]
+        )
+    except:
+        print("แตกใน show_feedback")
+
+    return frame
+#? end by khao---------------->
 
 def draw_rounded_rect(img, rect_start, rect_end, corner_width, box_color):
 
@@ -205,7 +236,7 @@ def draw_text(
     font=cv2.FONT_HERSHEY_SIMPLEX,
     pos=(0, 0),
     font_scale=1,
-    font_thickness=2,
+    font_thickness=1,
     text_color=(0, 255, 0),
     text_color_bg=(0, 0, 0),
     box_offset=(20, 10),
@@ -319,3 +350,51 @@ def scaledTo(width, height):
     display_scale_y = new_h / old_h
 
     return display_scale_x, display_scale_y
+
+
+
+#---------------------- Dusit function>
+import time as _time
+
+KEYFRAME_DIR = os.path.join("static", "keyframes")
+STATUS_JSON = os.path.join("static", "status.json")
+
+def ensure_dir(path):
+    os.makedirs(path, exist_ok=True)
+
+def save_keyframe_image(frame_bgr, role="user"):
+    ensure_dir(KEYFRAME_DIR)
+    ts = int(_time.time() * 1000)
+    fname = f"{role}_{ts}.jpg"
+    full_path = os.path.join(KEYFRAME_DIR, fname)
+    import cv2
+    cv2.imwrite(full_path, frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    return "/" + full_path.replace(os.path.sep, "/")
+
+def append_status_entry(user_image_url=None, similarity=None, rounds_count=None, user_vec=None, **kwargs):
+    ensure_dir(os.path.dirname(STATUS_JSON))
+    status = {"keyframes": [], "rounds_count": 0}
+    try:
+        if os.path.exists(STATUS_JSON):
+            with open(STATUS_JSON, "r", encoding="utf-8") as fh:
+                status = json.load(fh)
+    except Exception:
+        status = {"keyframes": [], "rounds_count": 0}
+
+    entry = {
+        "timestamp": int(_time.time() * 1000),
+        "user_image": user_image_url,
+        "similarity": float(similarity) if similarity is not None else None,
+        "user_vec": user_vec,
+        "rounds_count": int(rounds_count) if rounds_count is not None else int(status.get("rounds_count", 0)),
+    }
+    # เพิ่ม field อื่นๆ ที่ส่งเข้ามาผ่าน kwargs
+    entry.update(kwargs)
+
+    status.setdefault("keyframes", []).append(entry)
+    status["rounds_count"] = entry["rounds_count"]
+    if len(status["keyframes"]) > 200:
+        status["keyframes"] = status["keyframes"][-200:]
+    with open(STATUS_JSON, "w", encoding="utf-8") as fh:
+        json.dump(status, fh, ensure_ascii=False)
+    return status 
