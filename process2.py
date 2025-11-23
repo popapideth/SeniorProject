@@ -705,7 +705,7 @@ class ProcessFrame:
         return (None, "Unknown") if as_text else None
     
     #? add by khao---------------->
-    # วาดจุดสีแดง ณ ตำแหน่งที่ทำผิด
+    # วาดจุดสีแดง ณ ตำแหน่งที่ทำผิด /test
     def spotMistakePoint(self, frame, COLORS, coord1, coord2=[]):
         h, w, _ = frame.shape
 
