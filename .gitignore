@@ -1,9 +1,20 @@
 venv/
 env/
-.venv/
 .env
 *.env
 index2.html
 keyframes_full.csv
 trainer_keyframes.csv
+<<<<<<< HEAD
 __pycache__
+=======
+
+# add by khao ------->
+.venv/
+__pycache__
+rulebased.py
+static/keyframes
+static/status.json
+static/user_data.json
+githelp.txt
+>>>>>>> origin/cordelia

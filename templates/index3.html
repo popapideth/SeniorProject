@@ -94,6 +94,14 @@
                   placeholder="Reps"
                   min="1"
                 />
+                <select id="depth_select" class="form-select" style="width: 240px">
+                  <option value="">Select Squat Depth</option>
+                  <option value="0">Quarter Squat (45-60)</option>
+                  <option value="1">Half Squat (61-80)</option>
+                  <option value="2">Parallel Squat (81-100)</option>
+                  <option value="3">Full Squat (101-120)</option>
+                  
+                </select>
                 <button id="start" class="btn btn-primary" disabled>
                   Start
                 </button>
@@ -278,6 +286,7 @@
           </div>
           <div class="modal-body">
             <p>Total reps: <strong id="summary_total">0</strong></p>
+            <p>Depth correct: <strong id="summary_dept">0</strong></p>
             <p>Correct: <strong id="summary_correct">0</strong></p>
             <p>Incorrect: <strong id="summary_incorrect">0</strong></p>
             <p>Average similarity: <strong id="summary_avg">N/A</strong></p>
@@ -320,19 +329,36 @@
           }
 
           if (kfData.keyframes && kfData.keyframes.length > 0) {
-            const latestKeyframe =
-              kfData.keyframes[kfData.keyframes.length - 1];
+            const latestKeyframe = kfData.keyframes[kfData.keyframes.length - 1];
             if (latestKeyframe) {
               if (latestKeyframe.user_image) {
                 const img = document.getElementById("kf_user");
                 const baseImagePath = latestKeyframe.user_image.split("?")[0];
-
                 if (displayedMainSrc !== baseImagePath) {
                   const newSrc = baseImagePath + "?t=" + Date.now();
                   img.src = newSrc;
                   displayedMainSrc = baseImagePath;
                   console.log("Updated main keyframe image:", baseImagePath);
                 }
+              }
+              const criteriaArea = document.getElementById("criteria_area");
+              if (criteriaArea) {
+                const crit = latestKeyframe.user_criteria || {};
+                const critRes = latestKeyframe.criteria_results || {};
+                let html = '<div class="row">';
+                html += '<div class="col-auto"><strong>Criteria:</strong></div>';
+                [
+                  ['head_variance', 'Head'],
+                  ['knee_variance', 'Knee'],
+                  ['heel_variance', 'Heel'],
+                  ['trunk_variance', 'Trunk']
+                ].forEach(([key, label]) => {
+                  const val = crit[key];
+                  const pass = critRes[key];
+                  html += `<div class="col-auto">${label}: <span class="badge ${pass === true ? 'bg-success' : pass === false ? 'bg-danger' : 'bg-secondary'}">${val !== undefined ? val : 'N/A'}${pass !== undefined ? (pass ? ' ✓' : ' ✗') : ''}</span></div>`;
+                });
+                html += '</div>';
+                criteriaArea.innerHTML = html;
               }
             }
           }
@@ -403,6 +429,8 @@
                       const j = await rsum.json();
                       document.getElementById("summary_total").innerText =
                         j.total;
+                      document.getElementById("summary_dept").innerText =
+                        j.dept_correct;
                       document.getElementById("summary_correct").innerText =
                         j.correct;
                       document.getElementById("summary_incorrect").innerText =
@@ -547,6 +575,12 @@
                     kf.similarity ? kf.similarity.toFixed(1) : "N/A"
                   }% </span>
                 </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fw-bold">Depth:</span>
+                  <span class="badge bg-info" style="font-size: 0.9rem">${
+                    (kf.depth_text && kf.depth_text !== "Unknown") ? kf.depth_text : (kf.depth !== undefined && kf.depth !== null ? ('Depth ' + kf.depth) : 'N/A')
+                  }</span>
+                </div>
                 <div class="d-flex flex-column gap-2">
                   <div class="d-flex justify-content-between align-items-center">
                     <span class="fw-bold">User Vector:</span>
@@ -586,16 +620,23 @@
       setInterval(fetchStatusOnce, 1000);
 
       const repsInput = document.getElementById("reps");
+      const depthSelect = document.getElementById("depth_select");
       const startBtn = document.getElementById("start");
+      function updateStartBtnState() {
+        const v = Number(repsInput.value);
+        const dSelected = depthSelect && depthSelect.value !== "";
+        startBtn.disabled = !(v > 0 && dSelected);
+      }
       if (repsInput && startBtn) {
-        repsInput.addEventListener("input", () => {
-          const v = Number(repsInput.value);
-          startBtn.disabled = !(v > 0);
-        });
+        repsInput.addEventListener("input", updateStartBtnState);
+      }
+      if (depthSelect && startBtn) {
+        depthSelect.addEventListener("change", updateStartBtnState);
       }
 
       document.getElementById("start").addEventListener("click", async () => {
         const reps = Number(document.getElementById("reps").value) || 1;
+        const depth = depthSelect && depthSelect.value !== "" ? Number(depthSelect.value) : null;
         document.getElementById("start").disabled = true;
         document.getElementById("reps").disabled = true;
         // 5-second countdown
@@ -610,7 +651,7 @@
         await fetch("/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reps }),
+          body: JSON.stringify({ reps, depth }),
         });
         autoSummaryShown = false;
         document.getElementById("stop").disabled = false;
@@ -632,6 +673,7 @@
           const r = await fetch("/summary");
           const j = await r.json();
           document.getElementById("summary_total").innerText = j.total;
+          document.getElementById("summary_dept").innerText = j.dept_correct;
           document.getElementById("summary_correct").innerText = j.correct;
           document.getElementById("summary_incorrect").innerText = j.incorrect;
           document.getElementById("summary_avg").innerText =

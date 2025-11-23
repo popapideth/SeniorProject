@@ -1,13 +1,18 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 numpy==1.26.4
 =======
 numpy>=1.23.5,<2.0.0
+>>>>>>> origin/cordelia
+=======
+numpy==1.26.4
 >>>>>>> origin/cordelia
 mediapipe==0.10.21
 opencv-contrib-python==4.11.0.86
 opencv-python==4.11.0.86
 pandas>=2.0.3
 screeninfo==0.8.1
+<<<<<<< HEAD
 <<<<<<< HEAD
 Flask==3.1.2
 scikit-learn==1.7.2
@@ -17,4 +22,12 @@ python-dotenv==1.1.1
 =======
 flask==3.1.2
 scikit-learn==1.7.2
+>>>>>>> origin/cordelia
+=======
+Flask==3.1.2
+scikit-learn==1.7.2
+
+#backend
+psycopg2==2.9.11
+python-dotenv==1.1.1
 >>>>>>> origin/cordelia

@@ -62,7 +62,11 @@ def _similarity_cb(val):
             rep_number = session.get("done_reps", 0) + 1
             timestamp = time.time()
 
+<<<<<<< HEAD
         print(f"rep_number: {rep_number}")
+=======
+        print(f"⭐ rep_number: {rep_number}")
+>>>>>>> origin/cordelia
             
         if isinstance(val, dict):
             depth_text = val.get('depth')
@@ -110,7 +114,11 @@ def _similarity_cb(val):
                         criteria_pass = False
                 else:
                     criteria_results[k] = None
+<<<<<<< HEAD
                     
+=======
+
+>>>>>>> origin/cordelia
         if user_criteria:
             print("User criteria:")
             for k, v in user_criteria.items():
@@ -132,6 +140,13 @@ def _similarity_cb(val):
             depth_idx_normalized = depth_idx
 
         target_depth = session.get('target_depth')
+<<<<<<< HEAD
+=======
+        target_txt = processor.DEPTH_MAP.get(target_depth)
+        
+        print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
+        
+>>>>>>> origin/cordelia
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
 
         is_correct = (sim_val >= CORRECT_THRESH) and depth_matches and criteria_pass
@@ -141,6 +156,11 @@ def _similarity_cb(val):
             "similarity": sim_val,
             "depth": depth_text,
             "depth_value": depth_idx_normalized,
+<<<<<<< HEAD
+=======
+            "target_txt": target_txt,
+            "target_depth": target_depth,
+>>>>>>> origin/cordelia
             "user_vec": user_vec,
             "timestamp": int(timestamp * 1000),
             "rep_number": rep_number + 1,
@@ -314,7 +334,11 @@ def start_session():
         conn.commit()
         cursor.close()
         conn.close()
+<<<<<<< HEAD
     print("New session created:", current_session_id)
+=======
+    print("🔵 New session created:", current_session_id)
+>>>>>>> origin/cordelia
 
     return jsonify({
         'ok': True,
@@ -543,7 +567,11 @@ def get_keyframes():
 def calculate_summary():
     reps = user_data.get('reps', [])
     target_depth = session.get('target_depth', None)
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> origin/cordelia
     # filter
     if target_depth is not None:
         filtered = [r for r in reps if r.get('depth_value') == target_depth]
@@ -553,6 +581,10 @@ def calculate_summary():
     total = len(reps)
     dept_correct = len(filtered)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/cordelia
     sims = [float(r.get('similarity') or 0.0) for r in filtered]
     avg = round(statistics.mean(sims), 2) if sims else None
 
@@ -561,6 +593,7 @@ def calculate_summary():
     correct = 0
     for r in filtered:
         sim_val = float(r.get('similarity') or 0.0)
+<<<<<<< HEAD
         depth_matches = (r.get('depth_value') == target_depth) if target_depth is not None else True
 
         criteria_pass = True
@@ -570,6 +603,45 @@ def calculate_summary():
 
         if sim_val >= CORRECT_THRESH and depth_matches and criteria_pass:
             correct += 1
+=======
+        depth_idx = r.get('depth_value')
+        try:
+            depth_idx_normalized = depth_idx[0] if isinstance(depth_idx, (list, tuple)) and len(depth_idx) > 0 else depth_idx
+        except Exception:
+            depth_idx_normalized = depth_idx
+            
+        
+        depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
+        
+   #######ยังได้เช็ค
+        user_criteria = None
+        if isinstance(r, dict):
+            user_criteria = r.get('user_criteria')
+            
+        criteria_thresholds = {
+            'head_variance': thresholds.get('EAR_DEGREE_VARIANCE', 30),
+            'knee_variance': thresholds.get('KNEE_EXTEND_BEYOND_TOE', 15 * (user_camera_width / 640)),
+            'heel_variance': thresholds.get('HEEL_FLOAT_VARIANCE', 15),
+            'trunk_variance': thresholds.get('NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE', 10),
+        }
+
+        criteria_pass = True
+        criteria_results = {}
+        if user_criteria:
+            for k, v in user_criteria.items():
+                th = criteria_thresholds.get(k)
+                if th is not None:
+                    criteria_results[k] = abs(v) <= th
+                    if not criteria_results[k]:
+                        criteria_pass = False
+                else:
+                    criteria_results[k] = None
+
+        if (sim_val >= CORRECT_THRESH) and (depth_matches) and (criteria_pass):
+            correct += 1
+            
+    #################
+>>>>>>> origin/cordelia
 
     incorrect = total - correct
 
@@ -680,7 +752,11 @@ def saveToDatabase(record):
             cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time))       
             conn.commit()
 
+<<<<<<< HEAD
             print("Repetition saved!")
+=======
+            print("📥 Repetition saved! 📥")
+>>>>>>> origin/cordelia
 
             # Insert data to sessions
             summary = calculate_summary()
@@ -701,7 +777,11 @@ def saveToDatabase(record):
             conn.commit()
             cursor.close()
             conn.close()
+<<<<<<< HEAD
             print("DB saved successfully!")
+=======
+            print("📦 DB saved successfully!")
+>>>>>>> origin/cordelia
             return {
                 'message': 'Session with Repetitions created success',
                 'session_id': session_id

@@ -4,64 +4,88 @@
 =======
   "reps": [
     {
-      "user_image": "/static/keyframes/frame_1762767171397.jpg",
-      "similarity": 77.64,
-      "depth": "Improper Squat",
-      "depth_value": 4,
-      "user_vec": [
-        50.0,
-        17.0,
-        42.0,
-        38.0
-      ],
-      "timestamp": 1762767171397,
-      "rep_number": 1,
-      "isCorrect": false
-    },
-    {
-      "user_image": "/static/keyframes/frame_1762767174446.jpg",
-      "similarity": 80.42,
-      "depth": "Quarter Squat (45°)",
-      "depth_value": 0,
-      "user_vec": [
-        54.0,
-        23.0,
-        52.0,
-        38.0
-      ],
-      "timestamp": 1762767174446,
-      "rep_number": 2,
-      "isCorrect": false
-    },
-    {
-      "user_image": "/static/keyframes/frame_1762767177682.jpg",
-      "similarity": 86.81,
-      "depth": "Half Squat (60°)",
+      "user_image": "/static/keyframes/frame_1763717942264.jpg",
+      "similarity": 89.11,
+      "depth": "Half Squat (60-80)",
       "depth_value": 1,
       "user_vec": [
-        75.0,
-        42.0,
-        62.0,
-        36.0
+        103.0,
+        19.0,
+        73.0,
+        26.0
       ],
-      "timestamp": 1762767177682,
-      "rep_number": 3,
-      "isCorrect": true
+      "timestamp": 1763717942264,
+      "rep_number": 1,
+      "isCorrect": true,
+      "depth_match": true,
+      "user_criteria": {
+        "head_variance": 1,
+        "knee_variance": 2,
+        "heel_variance": 6,
+        "trunk_variance": 7
+      },
+      "criteria_results": {
+        "head_variance": true,
+        "knee_variance": true,
+        "heel_variance": true,
+        "trunk_variance": true
+      }
     },
     {
-      "user_image": "/static/keyframes/frame_1762767181393.jpg",
-      "similarity": 81.94,
-      "depth": "Quarter Squat (45°)",
-      "depth_value": 0,
+      "user_image": "/static/keyframes/frame_1763717953228.jpg",
+      "similarity": 87.33,
+      "depth": "Half Squat (60-80)",
+      "depth_value": 1,
       "user_vec": [
-        66.0,
-        41.0,
-        45.0,
-        18.0
+        102.0,
+        24.0,
+        62.0,
+        25.0
       ],
-      "timestamp": 1762767181393,
-      "rep_number": 4,
-      "isCorrect": false
+      "timestamp": 1763717953228,
+      "rep_number": 2,
+      "isCorrect": false,
+      "depth_match": true,
+      "user_criteria": {
+        "head_variance": 54,
+        "knee_variance": 4,
+        "heel_variance": 6,
+        "trunk_variance": 1
+      },
+      "criteria_results": {
+        "head_variance": false,
+        "knee_variance": true,
+        "heel_variance": true,
+        "trunk_variance": true
+      }
+    },
+    {
+      "user_image": "/static/keyframes/frame_1763717965071.jpg",
+      "similarity": 95.33,
+      "depth": "Parallel Squat (81-90)",
+      "depth_value": 2,
+      "user_vec": [
+        106.0,
+        22.0,
+        100.0,
+        30.0
+      ],
+      "timestamp": 1763717965071,
+      "rep_number": 3,
+      "isCorrect": false,
+      "depth_match": false,
+      "user_criteria": {
+        "head_variance": 11,
+        "knee_variance": 13,
+        "heel_variance": 20,
+        "trunk_variance": 8
+      },
+      "criteria_results": {
+        "head_variance": true,
+        "knee_variance": true,
+        "heel_variance": false,
+        "trunk_variance": true
+      }
     }
   ]
 >>>>>>> origin/cordelia
