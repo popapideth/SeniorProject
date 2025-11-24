@@ -176,7 +176,8 @@ class ProcessFrame:
     def get_state(self, hip_angle, knee_angle, thresholds):
         knee = None
 
-        if thresholds['HIP_VERT']['STAND'][0] <= knee_angle <= thresholds['HIP_VERT']['STAND'][1]:
+        if thresholds['HIP_VERT']['STAND'][0] <= hip_angle <= thresholds['HIP_VERT']['STAND'][1] and \
+                thresholds['KNEE_VERT']['STAND'][0] <= knee_angle <= thresholds['KNEE_VERT']['STAND'][1]:
             knee = 1
         elif thresholds['HIP_VERT']['SQUATTING'][0] <= hip_angle <= thresholds['HIP_VERT']['SQUATTING'][1] and \
                 thresholds['KNEE_VERT']['SQUATTING'][0] <= knee_angle <= thresholds['KNEE_VERT']['SQUATTING'][1]:
@@ -425,7 +426,7 @@ class ProcessFrame:
                             #ถ้าจุดใดใน 4 จุดผิด ให้แสดงสีแดง
                             im_point_ear = np.array([shoulder_coord[0], 0])
                             HEAD_DEGREE_VALUE = find_angle(ear_coord, im_point_ear, shoulder_coord)
-                            if (HEAD_DEGREE_VALUE > self.thresholds['EAR_DEGREE_VARIANCE']):
+                            if (HEAD_DEGREE_VALUE > self.thresholds['HEAD_DEGREE_VARIANCE']):
                                 self.state_tracker['POINT_OF_MISTAKE'][1] = True
                                 frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[1], HEAD_DEGREE_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, ear_coord)
