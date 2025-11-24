@@ -112,9 +112,9 @@ def _similarity_cb(val):
                         criteria_pass = False
                 else:
                     criteria_results[k] = None
-                    
+
         if user_criteria:
-            print("⁉️ User criteria:")
+            print("User criteria:")
             for k, v in user_criteria.items():
                 passed = criteria_results.get(k)
                 print(f"  {k}: {v} {'✓' if passed else '✗'} (threshold: {criteria_thresholds.get(k)})")
@@ -134,6 +134,10 @@ def _similarity_cb(val):
             depth_idx_normalized = depth_idx
 
         target_depth = session.get('target_depth')
+        target_txt = processor.DEPTH_MAP.get(target_depth)
+        
+        print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
+        
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
 
         is_correct = (sim_val >= CORRECT_THRESH) and depth_matches and criteria_pass
@@ -143,12 +147,14 @@ def _similarity_cb(val):
             "similarity": sim_val,
             "depth": depth_text,
             "depth_value": depth_idx_normalized,
+            "target_txt": target_txt,
+            "target_depth": target_depth,
             "user_vec": user_vec,
             "timestamp": int(timestamp * 1000),
             "rep_number": rep_number + 1,
             "isCorrect": bool(is_correct),
             "depth_match": bool(depth_matches),
-            #""" "user_criteria": user_criteria, ยังไม่แน่ใจว่าจะเก็บใหม """
+            "user_criteria": user_criteria,
             "criteria_results": criteria_results,
         }
 
@@ -544,7 +550,7 @@ def get_keyframes():
 def calculate_summary():
     reps = user_data.get('reps', [])
     target_depth = session.get('target_depth', None)
-
+    
     # filter
     if target_depth is not None:
         filtered = [r for r in reps if r.get('depth_value') == target_depth]
@@ -554,6 +560,7 @@ def calculate_summary():
     total = len(reps)
     dept_correct = len(filtered)
 
+
     sims = [float(r.get('similarity') or 0.0) for r in filtered]
     avg = round(statistics.mean(sims), 2) if sims else None
 
@@ -562,15 +569,43 @@ def calculate_summary():
     correct = 0
     for r in filtered:
         sim_val = float(r.get('similarity') or 0.0)
-        depth_matches = (r.get('depth_value') == target_depth) if target_depth is not None else True
+        depth_idx = r.get('depth_value')
+        try:
+            depth_idx_normalized = depth_idx[0] if isinstance(depth_idx, (list, tuple)) and len(depth_idx) > 0 else depth_idx
+        except Exception:
+            depth_idx_normalized = depth_idx
+            
+        
+        depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
+        
+   #######ยังได้เช็ค
+        user_criteria = None
+        if isinstance(r, dict):
+            user_criteria = r.get('user_criteria')
+            
+        criteria_thresholds = {
+            'head_variance': thresholds.get('EAR_DEGREE_VARIANCE', 30),
+            'knee_variance': thresholds.get('KNEE_EXTEND_BEYOND_TOE', 15 * (user_camera_width / 640)),
+            'heel_variance': thresholds.get('HEEL_FLOAT_VARIANCE', 15),
+            'trunk_variance': thresholds.get('NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE', 10),
+        }
 
         criteria_pass = True
-        crit_res = r.get('criteria_results')
-        if crit_res:
-            criteria_pass = all(v is True for v in crit_res.values())
+        criteria_results = {}
+        if user_criteria:
+            for k, v in user_criteria.items():
+                th = criteria_thresholds.get(k)
+                if th is not None:
+                    criteria_results[k] = abs(v) <= th
+                    if not criteria_results[k]:
+                        criteria_pass = False
+                else:
+                    criteria_results[k] = None
 
-        if sim_val >= CORRECT_THRESH and depth_matches and criteria_pass:
+        if (sim_val >= CORRECT_THRESH) and (depth_matches) and (criteria_pass):
             correct += 1
+            
+    #################
 
     incorrect = total - correct
 

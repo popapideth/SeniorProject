@@ -680,7 +680,7 @@ class ProcessFrame:
                 self.st = time.time()
             pass
         return frame
-
+### test1024,4 +1024,7 @@
     DEPTH_MAP = {
         0: "Quarter Squat (45-60)",
         1: "Half Squat (61-80)",
@@ -706,7 +706,7 @@ class ProcessFrame:
         return (None, "Unknown") if as_text else None
     
     #? add by khao---------------->
-    # วาดจุดสีแดง ณ ตำแหน่งที่ทำผิด
+    # วาดจุดสีแดง ณ ตำแหน่งที่ทำผิด /test
     def spotMistakePoint(self, frame, COLORS, coord1, coord2=[]):
         h, w, _ = frame.shape
 
