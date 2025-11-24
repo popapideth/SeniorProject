@@ -7,8 +7,8 @@ keyframes_full.csv
 trainer_keyframes.csv
 
 # add by khao ------->
-.venv/
 __pycache__
+.venv/
 rulebased.py
 static/keyframes
 static/status.json
