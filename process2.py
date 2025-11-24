@@ -203,7 +203,7 @@ class ProcessFrame:
 
         try:
             # if not results.pose_landmarks:
-            #     print("[DEBUG] ⚠️ No pose landmarks detected (pose.process returned None)")
+            #     print("[DEBUG]  No pose landmarks detected (pose.process returned None)")
             
             init_landmarks = results.pose_landmarks.landmark
 
@@ -488,7 +488,7 @@ class ProcessFrame:
                                     })
 
                                     print(
-                                        f"📝 select frame: {self.state_tracker['selected_frame'][-1]['angles']}")
+                                        f"select frame: {self.state_tracker['selected_frame'][-1]['angles']}")
 
                                     self.state_tracker['selected_frame_count'] += 1
                                     self.state_tracker['stable_pose_time_count'] = 0
@@ -516,9 +516,9 @@ class ProcessFrame:
                             keyframe=self.state_tracker['keyframe'], option=1)
                         
                         
-                        print(f"✅ Keyframe: {self.state_tracker['keyframe']['angles']}")
+                        print(f"Keyframe: {self.state_tracker['keyframe']['angles']}")
 
-                        print(f"⁉️ User criteria: {self.state_tracker['keyframe']['user_criteria']}")
+                        print(f"User criteria: {self.state_tracker['keyframe']['user_criteria']}")
                         
                         #cosine 127,39,98,32
                         # เก็บค่า trainer vector สำหรับเปรียบเทียบ
@@ -675,23 +675,16 @@ class ProcessFrame:
         except Exception as e:  # ตรวจจับไม่ได้สักจุด
             el = time.time() - self.st
             if el >= 1.0:
-                print(f'ตรงนี้ {e}')
+                print(f'this here {e}')
                 self.st = time.time()
             pass
         return frame
 ### test1024,4 +1024,7 @@
     DEPTH_MAP = {
-<<<<<<< HEAD
-        0: "Quarter Squat (45)",
-        1: "Half Squat (60)",
-        2: "Parallel Squat (90)",
-        3: "Full Squat (120)",
-=======
         0: "Quarter Squat (45-60)",
         1: "Half Squat (61-80)",
         2: "Parallel Squat (81-100)",
         3: "Full Squat (101-120)",
->>>>>>> origin/cordelia
         4: "Improper Squat"
     }
 
@@ -712,11 +705,7 @@ class ProcessFrame:
         return (None, "Unknown") if as_text else None
     
     #? add by khao---------------->
-<<<<<<< HEAD
-    # วาดจุดสีแดง ณ ตำแหน่งที่ทำผิด
-=======
     # วาดจุดสีแดง ณ ตำแหน่งที่ทำผิด /test
->>>>>>> origin/cordelia
     def spotMistakePoint(self, frame, COLORS, coord1, coord2=[]):
         h, w, _ = frame.shape
 
