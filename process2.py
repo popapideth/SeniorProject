@@ -543,7 +543,7 @@ class ProcessFrame:
                         """ cos_sim = cosine_similarity(trainer_norm.reshape(1, -1), user_norm.reshape(1, -1))[0][0]
                         similarity_percentage = float(cos_sim * 100) """
 
-                        diff = 1 - np.abs(trainer_norm - user_norm)
+                        diff = 1 - abs(trainer_norm - user_norm)
                         angle_similarity = diff * 100
 
                         total_similarity = float(np.sum(angle_similarity * w))
