@@ -44,11 +44,10 @@ user_data = {
     "reps": [],
 }
 
-CORRECT_THRESH =85.0
+CORRECT_THRESH =80.0
 
 USER_DATA_PATH = os.path.join('static', 'user_data.json')
 
-# เก็บลงDatabase ในFuncนี้ ซึ่งจะถูกเรียกทุกครั้งที่ rep สำเร็จ
 def _similarity_cb(val):
     try:
         if val is None:
@@ -56,7 +55,8 @@ def _similarity_cb(val):
 
         if isinstance(val, dict):
             similarity = float(val.get("similarity", 0))
-            #confused
+            user_landmarks_visibility = val.get("user_landmarks_visibility")
+            user_landmarks_Z = val.get("user_landmarks_z")
             rep_number = val.get("rep_number")
             timestamp = val.get("timestamp", time.time())
         else:
@@ -64,7 +64,7 @@ def _similarity_cb(val):
             rep_number = session.get("done_reps", 0) + 1
             timestamp = time.time()
 
-        print(f"⭐ rep_number: {rep_number}")
+        print(f"rep_number: {rep_number}")
             
         if isinstance(val, dict):
             depth_text = val.get('depth')
@@ -117,7 +117,7 @@ def _similarity_cb(val):
             print("User criteria:")
             for k, v in user_criteria.items():
                 passed = criteria_results.get(k)
-                print(f"  {k}: {v} {'✓' if passed else '✗'} (threshold: {criteria_thresholds.get(k)})")
+                print(f"  {k}: {v} {'/' if passed else 'X'} (threshold: {criteria_thresholds.get(k)})")
 
         with state['lock']:
             state['last_similarity'] = similarity
@@ -139,9 +139,9 @@ def _similarity_cb(val):
         print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
         
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
+        thres_t = sim_val >= CORRECT_THRESH
 
-        is_correct = (sim_val >= CORRECT_THRESH) and depth_matches and criteria_pass
-
+        is_correct = thres_t and depth_matches and criteria_pass
         record = {
             "user_image": f"/static/keyframes/frame_{int(timestamp * 1000)}.jpg",
             "similarity": sim_val,
@@ -150,10 +150,13 @@ def _similarity_cb(val):
             "target_txt": target_txt,
             "target_depth": target_depth,
             "user_vec": user_vec,
+            "Z": user_landmarks_Z,
+            "visibility": user_landmarks_visibility,
             "timestamp": int(timestamp * 1000),
             "rep_number": rep_number + 1,
             "isCorrect": bool(is_correct),
             "depth_match": bool(depth_matches),
+            "sim_t": bool(thres_t),
             "user_criteria": user_criteria,
             "criteria_results": criteria_results,
         }
@@ -189,7 +192,6 @@ def gen_frames():
         s_gf = time.time()  
         while True:
             success, frame = cap.read()
-            frame = cv2.flip(frame, 1)
             
             if not success:
                 break
@@ -312,16 +314,16 @@ def start_session():
         created_time = datetime.now().isoformat()
 
         query  = ''' INSERT INTO public.sessions
-        (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,created_time)
-        VALUES (%s,%s,%s,%s,%s,%s)
+        (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,depth_correct,target_depth,created_time)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
         RETURNING session_id'''
-        cursor.execute(query,(exercise_name,0,0,0,0,created_time))
+        cursor.execute(query,(exercise_name,0,0,0,0,0,0,created_time))
 
         current_session_id = cursor.fetchone()[0]#เก็บ session_id
         conn.commit()
         cursor.close()
         conn.close()
-    print("🔵 New session created:", current_session_id)
+    print("New session created:", current_session_id)
 
     return jsonify({
         'ok': True,
@@ -485,7 +487,7 @@ def stop_session_route():
 def summary():
     return jsonify({
         'total': calculate_summary()['total'],
-        'dept_correct': calculate_summary()['dept_correct'],
+        'depth_correct': calculate_summary()['depth_correct'],
         'correct': calculate_summary()['correct'],
         'incorrect': calculate_summary()['incorrect'],
         'average_similarity': calculate_summary()['average'],
@@ -558,13 +560,13 @@ def calculate_summary():
         filtered = reps
 
     total = len(reps)
-    dept_correct = len(filtered)
+    depth_correct = len(filtered)
 
 
     sims = [float(r.get('similarity') or 0.0) for r in filtered]
     avg = round(statistics.mean(sims), 2) if sims else None
 
-    CORRECT_THRESH = 85.0
+    CORRECT_THRESH = 80.0
 
     correct = 0
     for r in filtered:
@@ -611,7 +613,7 @@ def calculate_summary():
 
     return {
         'total': total,
-        'dept_correct': dept_correct,
+        'depth_correct': depth_correct,
         'correct': correct,
         'incorrect': incorrect,
         'average': avg,
@@ -706,12 +708,29 @@ def saveToDatabase(record):
             )
             rep_number = record.get("rep_number" , 0)
             isCorrect = record.get("isCorrect", None)
+            depth_match = record.get("depth_match", None)
+            user_criteria = record.get("user_criteria") or {}
+            if len(user_criteria) == 4 :
+                head_variance = int(user_criteria.get("head_variance", 0))
+                knee_variance = int(user_criteria.get("knee_variance", 0))
+                heel_variance = int(user_criteria.get("heel_variance", 0))
+                trunk_variance = int(user_criteria.get("trunk_variance", 0))
+            else:
+                head_variance = knee_variance = heel_variance = trunk_variance = 0
+            criteria_results = record.get("criteria_results") or {}
+            if len(criteria_results) == 4 :
+                head_pass = bool(criteria_results.get("head_variance", None))
+                knee_pass = bool(criteria_results.get("knee_variance", None))
+                heel_pass = bool(criteria_results.get("heel_variance", None))
+                trunk_pass = bool(criteria_results.get("trunk_variance", None))
+            else:
+                head_pass = knee_pass = heel_pass = trunk_pass = None
             session_id = current_session_id
 
             insertRepetition_query = '''INSERT INTO public.repetitions
-                (session_id,reps_number,iscorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
-            cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time))       
+                (session_id,reps_number,iscorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,depth_match,head_variance,knee_variance,heel_variance,trunk_variance,head_pass,knee_pass,heel_pass,trunk_pass,created_time)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+            cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,depth_match,head_variance,knee_variance,heel_variance,trunk_variance,head_pass,knee_pass,heel_pass,trunk_pass,created_time))       
             conn.commit()
 
             print("📥 Repetition saved! 📥")
@@ -719,19 +738,25 @@ def saveToDatabase(record):
             # Insert data to sessions
             summary = calculate_summary()
             total_count = summary['total']
+            ## ประเภทความลึกที่เลือก ถูกตามที่กำหนดไว้ไหม
+            depth_correct = summary['depth_correct']
             correct_count = summary['correct']
             incorrect_count = summary['incorrect']
             avg_accuracy_percent = summary['average']
+            target_depth = record.get("target_depth", 0)
+            target_txt = record.get("target_txt", None)
 
             update_session_query = '''UPDATE public.sessions
             SET
                 total_count = %s,
                 correct_count = %s,
                 incorrect_count = %s,
-                avg_accuracy_percent = %s
+                avg_accuracy_percent = %s,
+                depth_correct = %s,
+                target_depth = %s
             WHERE session_id = %s
             '''
-            cursor.execute(update_session_query, (total_count,correct_count,incorrect_count,avg_accuracy_percent,session_id))
+            cursor.execute(update_session_query, (total_count,correct_count,incorrect_count,avg_accuracy_percent,depth_correct,target_depth,session_id))
             conn.commit()
             cursor.close()
             conn.close()

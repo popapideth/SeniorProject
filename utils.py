@@ -364,7 +364,8 @@ def save_keyframe_image(frame_bgr, role="user"):
     ensure_dir(KEYFRAME_DIR)
     ts = int(time.time() * 1000)
     fname = f"{role}_{ts}.jpg"
-    full_path = os.path.join(KEYFRAME_DIR, fname)
+    full_path = os.path.join(KEYFRAME_DIR, fname, )
+    import cv2
     cv2.imwrite(full_path, frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
     return "/" + full_path.replace(os.path.sep, "/")
 

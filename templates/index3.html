@@ -94,7 +94,11 @@
                   placeholder="Reps"
                   min="1"
                 />
-                <select id="depth_select" class="form-select" style="width: 240px">
+                <select
+                  id="depth_select"
+                  class="form-select"
+                  style="width: 240px"
+                >
                   <option value="">Select Squat Depth</option>
                   <option value="0">Quarter Squat (45-60)</option>
                   <option value="1">Half Squat (61-80)</option>
@@ -328,7 +332,8 @@
           }
 
           if (kfData.keyframes && kfData.keyframes.length > 0) {
-            const latestKeyframe = kfData.keyframes[kfData.keyframes.length - 1];
+            const latestKeyframe =
+              kfData.keyframes[kfData.keyframes.length - 1];
             if (latestKeyframe) {
               if (latestKeyframe.user_image) {
                 const img = document.getElementById("kf_user");
@@ -345,18 +350,27 @@
                 const crit = latestKeyframe.user_criteria || {};
                 const critRes = latestKeyframe.criteria_results || {};
                 let html = '<div class="row">';
-                html += '<div class="col-auto"><strong>Criteria:</strong></div>';
+                html +=
+                  '<div class="col-auto"><strong>Criteria:</strong></div>';
                 [
-                  ['head_variance', 'Head'],
-                  ['knee_variance', 'Knee'],
-                  ['heel_variance', 'Heel'],
-                  ['trunk_variance', 'Trunk']
+                  ["head_variance", "Head"],
+                  ["knee_variance", "Knee"],
+                  ["heel_variance", "Heel"],
+                  ["trunk_variance", "Trunk"],
                 ].forEach(([key, label]) => {
                   const val = crit[key];
                   const pass = critRes[key];
-                  html += `<div class="col-auto">${label}: <span class="badge ${pass === true ? 'bg-success' : pass === false ? 'bg-danger' : 'bg-secondary'}">${val !== undefined ? val : 'N/A'}${pass !== undefined ? (pass ? ' ✓' : ' ✗') : ''}</span></div>`;
+                  html += `<div class="col-auto">${label}: <span class="badge ${
+                    pass === true
+                      ? "bg-success"
+                      : pass === false
+                      ? "bg-danger"
+                      : "bg-secondary"
+                  }">${val !== undefined ? val : "N/A"}${
+                    pass !== undefined ? (pass ? " ✓" : " ✗") : ""
+                  }</span></div>`;
                 });
-                html += '</div>';
+                html += "</div>";
                 criteriaArea.innerHTML = html;
               }
             }
@@ -429,7 +443,7 @@
                       document.getElementById("summary_total").innerText =
                         j.total;
                       document.getElementById("summary_dept").innerText =
-                        j.dept_correct;
+                        j.depth_correct;
                       document.getElementById("summary_correct").innerText =
                         j.correct;
                       document.getElementById("summary_incorrect").innerText =
@@ -577,7 +591,11 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="fw-bold">Depth:</span>
                   <span class="badge bg-info" style="font-size: 0.9rem">${
-                    (kf.depth_text && kf.depth_text !== "Unknown") ? kf.depth_text : (kf.depth !== undefined && kf.depth !== null ? ('Depth ' + kf.depth) : 'N/A')
+                    kf.depth_text && kf.depth_text !== "Unknown"
+                      ? kf.depth_text
+                      : kf.depth !== undefined && kf.depth !== null
+                      ? "Depth " + kf.depth
+                      : "N/A"
                   }</span>
                 </div>
                 <div class="d-flex flex-column gap-2">
@@ -635,7 +653,10 @@
 
       document.getElementById("start").addEventListener("click", async () => {
         const reps = Number(document.getElementById("reps").value) || 1;
-        const depth = depthSelect && depthSelect.value !== "" ? Number(depthSelect.value) : null;
+        const depth =
+          depthSelect && depthSelect.value !== ""
+            ? Number(depthSelect.value)
+            : null;
         document.getElementById("start").disabled = true;
         document.getElementById("reps").disabled = true;
         // 5-second countdown
@@ -672,7 +693,7 @@
           const r = await fetch("/summary");
           const j = await r.json();
           document.getElementById("summary_total").innerText = j.total;
-          document.getElementById("summary_dept").innerText = j.dept_correct;
+          document.getElementById("summary_dept").innerText = j.depth_correct;
           document.getElementById("summary_correct").innerText = j.correct;
           document.getElementById("summary_incorrect").innerText = j.incorrect;
           document.getElementById("summary_avg").innerText =

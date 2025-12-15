@@ -533,6 +533,8 @@ class ProcessFrame:
                             self.state_tracker['keyframe']['angles']['knee'], 
                             self.state_tracker['keyframe']['angles']['ankle']
                         ], dtype=float)
+                        
+                        user_landmarks = self.state_tracker['keyframe']['landmarks']
 
                         self.state_tracker['latest_user_vec'] = user_vec.tolist()
 
@@ -540,15 +542,29 @@ class ProcessFrame:
                         user_norm = np.clip(user_vec / 180.0, 0, 1)
                         
                         #คำนวณ similarity cosine
-                        """ cos_sim = cosine_similarity(trainer_norm.reshape(1, -1), user_norm.reshape(1, -1))[0][0]
-                        similarity_percentage = float(cos_sim * 100) """
+                        #cos_sim = cosine_similarity(trainer_norm.reshape(1, -1), user_norm.reshape(1, -1))[0][0]
+                        #similarity_percentage = float(cos_sim * 100)
+                        #คำนวณ similarity แบบอื่น
+                        # ---- 1) Cosine similarity ----
+                        # cos_sim = cosine_similarity(
+                        #     trainer_norm.reshape(1, -1),
+                        #     user_norm.reshape(1, -1)
+                        # )[0][0]
 
-                        diff = 1 - abs(trainer_norm - user_norm)
-                        angle_similarity = diff * 100
+                        # cosine_score = float(cos_sim * 100)
 
-                        total_similarity = float(np.sum(angle_similarity * w))
+                        # # ---- 2) Absolute difference ----
+                        # diff = 1 - np.abs(trainer_norm - user_norm)
+                        # angle_sim = float(np.mean(diff) * 100)
 
-                        print("Similarity per angle:", angle_similarity)
+                        # # ---- 3) Final Hybrid Score ----
+                        # final_similarity = 0.7 * cosine_score + 0.3 * angle_sim
+                        diff = 1 - np.abs(trainer_norm - user_norm)
+                        similarity_percentage = diff * 100
+
+                        total_similarity = float(np.sum(similarity_percentage * w))
+
+                        print("Similarity per angle:", similarity_percentage)
                         print(f"Average similarity: {total_similarity:.2f}%")
                         print(f"---------------------------------------")
                         print(f"---------------------------------------")
@@ -604,6 +620,8 @@ class ProcessFrame:
                                     "depth": depth_text,
                                     "depth_value": current_depth,
                                     "user_vec": user_vec.tolist(),
+                                    "user_landmarks_visibility": [landmark.visibility for landmark in user_landmarks],
+                                    "user_landmarks_z": [landmark.z for landmark in user_landmarks],
                                     "rep_number": self.state_tracker['rounds_count'],
                                     "timestamp": time.time(),
                                     "user_criteria": self.state_tracker['keyframe']['user_criteria'] if self.state_tracker.get('keyframe') and self.state_tracker['keyframe'] is not None and 'user_criteria' in self.state_tracker['keyframe'] else None,
@@ -619,7 +637,7 @@ class ProcessFrame:
                         self.state_tracker['rounds_count'] += 1
                         try:
                             if 'show_keyframe' in locals() and show_keyframe is not None and 'frame' in show_keyframe:
-                                user_img_url = save_keyframe_image(show_keyframe['frame'], role="user")
+                                user_img_url = save_keyframe_image(show_keyframe['frame'], role="user",)
                                 try:
                                     rounds = int(self.state_tracker.get('rounds_count', 0))
                                 except Exception:
@@ -634,6 +652,8 @@ class ProcessFrame:
                                     rounds_count=rounds,
                                     similarity=sim_val,
                                     user_vec=user_vec_data,
+                                    user_landmarks_v=[landmark.visibility for landmark in user_landmarks],
+                                    user_landmarks_z=[landmark.z for landmark in user_landmarks],
                                     depth=depth_text,
                                     depth_text=depth_text,
                                     depth_value=current_depth,
@@ -676,7 +696,7 @@ class ProcessFrame:
         except Exception as e:  # ตรวจจับไม่ได้สักจุด
             el = time.time() - self.st
             if el >= 1.0:
-                print(f'ตรงนี้ {e}')
+                print(f'this here {e}')
                 self.st = time.time()
             pass
         return frame
