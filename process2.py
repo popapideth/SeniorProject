@@ -1,10 +1,7 @@
 import cv2
-import matplotlib.pyplot as plt
 import mediapipe as mp
 import numpy as np
-import pandas as pd
 import time
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.spatial.distance import euclidean
 #import seaborn as sns

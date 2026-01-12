@@ -56,7 +56,7 @@ def _similarity_cb(val):
         if isinstance(val, dict):
             similarity = float(val.get("similarity", 0))
             user_landmarks_visibility = val.get("user_landmarks_visibility")
-            user_landmarks_Z = val.get("user_landmarks_z")
+            user_landmarks_z = val.get("user_landmarks_z")
             rep_number = val.get("rep_number")
             timestamp = val.get("timestamp", time.time())
         else:
@@ -144,21 +144,21 @@ def _similarity_cb(val):
         is_correct = thres_t and depth_matches and criteria_pass
         record = {
             "user_image": f"/static/keyframes/frame_{int(timestamp * 1000)}.jpg",
-            "similarity": sim_val,
-            "depth": depth_text,
-            "depth_value": depth_idx_normalized,
-            "target_txt": target_txt,
-            "target_depth": target_depth,
-            "user_vec": user_vec,
-            "Z": user_landmarks_Z,
-            "visibility": user_landmarks_visibility,
             "timestamp": int(timestamp * 1000),
             "rep_number": rep_number + 1,
-            "isCorrect": bool(is_correct),
+            "target_depth": target_depth,
+            "target_txt": target_txt,
+            "depth_value": depth_idx_normalized,
+            "depth": depth_text,
             "depth_match": bool(depth_matches),
+            "user_vec": user_vec,
+            "similarity": sim_val,
             "sim_t": bool(thres_t),
+            "visibility": user_landmarks_visibility,
+            "z": user_landmarks_z,
             "user_criteria": user_criteria,
             "criteria_results": criteria_results,
+            "isCorrect": bool(is_correct),
         }
 
         session.setdefault("keyframes", []).append(record)
