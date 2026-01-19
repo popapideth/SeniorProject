@@ -1,19 +1,21 @@
-from flask import Flask, render_template, Response, jsonify
-import threading
-import time
 import cv2
 import json
+import numpy as np
 import os
-from process2 import ProcessFrame
-from threshold import get_mediapipe_pose, get_thresholds
 import statistics
+import threading
+import time
+
+from datetime import datetime
+from flask import Flask, render_template, Response, jsonify, request
+from threshold import get_mediapipe_pose, get_thresholds
+from process2 import ProcessFrame
+
 # backend
 from backend.models.db_connection import get_db_connection
-from datetime import datetime
+
 current_session_id = None
-
 app = Flask(__name__)
-
 
 state = {
     'last_similarity': None,
@@ -22,7 +24,6 @@ state = {
     'last_depth_text': None,
     'last_depth_value': None
 }
-
 session = {
     'target_reps': 0,
     'done_reps': 0,
@@ -34,17 +35,27 @@ session = {
 
 pose = get_mediapipe_pose()
 cap = cv2.VideoCapture(0)
+
+# ตรวจสอบว่า camera ใช้ได้หรือไม่
+if not cap.isOpened():
+    print("[ERROR] ไม่สามารถเปิด camera ได้ โปรแกรมจะหยุด")
+    raise RuntimeError("Camera not available")
+
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+outvideo = cv2.VideoWriter('outvideo.avi', fourcc, 20.0, (640,  480))
+fps = cap.get(cv2.CAP_PROP_FPS)
+delay = int(1000 / fps)
+
 user_camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 user_camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 thresholds = get_thresholds(user_camera_width, user_camera_height)
-capUser = (user_camera_width,user_camera_height)
 
 user_data = {
     "reps": [],
 }
 
-CORRECT_THRESH =85.0
+CORRECT_THRESH =80.0
 
 USER_DATA_PATH = os.path.join('static', 'user_data.json')
 
@@ -55,6 +66,8 @@ def _similarity_cb(val):
 
         if isinstance(val, dict):
             similarity = float(val.get("similarity", 0))
+            user_landmarks_visibility = val.get("user_landmarks_visibility")
+            user_landmarks_z = val.get("user_landmarks_z")
             rep_number = val.get("rep_number")
             timestamp = val.get("timestamp", time.time())
         else:
@@ -62,7 +75,7 @@ def _similarity_cb(val):
             rep_number = session.get("done_reps", 0) + 1
             timestamp = time.time()
 
-        print(f"⭐ rep_number: {rep_number}")
+        print(f"rep_number: {rep_number}")
             
         if isinstance(val, dict):
             depth_text = val.get('depth')
@@ -71,14 +84,17 @@ def _similarity_cb(val):
             depth_value, depth_text = processor.get_depth(as_text=True)
             depth_idx = depth_value
 
-        if isinstance(depth_text, (list, tuple)):
+        if depth_text is None:
+            depth_text = 'Unknown'
+        elif isinstance(depth_text, (list, tuple)):
             try:
-                depth_text = depth_text[1]
+                depth_text = depth_text[1] if len(depth_text) > 1 else str(depth_text[0])
             except Exception:
                 depth_text = str(depth_text)
+        
         if isinstance(depth_idx, (list, tuple)):
             try:
-                depth_idx = depth_idx[0]
+                depth_idx = depth_idx[0] if len(depth_idx) > 0 else None
             except Exception:
                 depth_idx = None
 
@@ -115,7 +131,7 @@ def _similarity_cb(val):
             print("User criteria:")
             for k, v in user_criteria.items():
                 passed = criteria_results.get(k)
-                print(f"  {k}: {v} {'✓' if passed else '✗'} (threshold: {criteria_thresholds.get(k)})")
+                print(f"  {k}: {v} {'/' if passed else 'X'} (threshold: {criteria_thresholds.get(k)})")
 
         with state['lock']:
             state['last_similarity'] = similarity
@@ -123,7 +139,9 @@ def _similarity_cb(val):
         if not session.get('running') or session.get('done_reps', 0) >= session.get('target_reps', 0):
             return
 
-        session['done_reps'] = rep_number
+        # เพิ่มจำนวน done_reps ทีละ 1 (1-indexed ที่ถูกต้อง)
+        session['done_reps'] += 1
+        current_rep_number = session['done_reps']
         sim_val = round(float(similarity), 2)
 
         try:
@@ -137,23 +155,26 @@ def _similarity_cb(val):
         print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
         
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
+        thres_t = sim_val >= CORRECT_THRESH
 
-        is_correct = (sim_val >= CORRECT_THRESH) and depth_matches and criteria_pass
-
+        is_correct = thres_t and depth_matches and criteria_pass
         record = {
             "user_image": f"/static/keyframes/frame_{int(timestamp * 1000)}.jpg",
-            "similarity": sim_val,
-            "depth": depth_text,
-            "depth_value": depth_idx_normalized,
-            "target_txt": target_txt,
-            "target_depth": target_depth,
-            "user_vec": user_vec,
             "timestamp": int(timestamp * 1000),
-            "rep_number": rep_number + 1,
-            "isCorrect": bool(is_correct),
+            "rep_number": current_rep_number,
+            "target_depth": target_depth,
+            "target_txt": target_txt,
+            "depth_value": depth_idx_normalized,
+            "depth": depth_text,
             "depth_match": bool(depth_matches),
+            "user_vec": user_vec,
+            "similarity": sim_val,
+            "sim_t": bool(thres_t),
+            "visibility": user_landmarks_visibility,
+            "z": user_landmarks_z,
             "user_criteria": user_criteria,
             "criteria_results": criteria_results,
+            "isCorrect": bool(is_correct),
         }
 
         session.setdefault("keyframes", []).append(record)
@@ -161,8 +182,6 @@ def _similarity_cb(val):
         save_user_data()
         print(f"user_data['rep']: {user_data['reps']}")
 
-        with app.app_context():
-            saveToDatabase(record)
 
         try:
             with state['lock']:
@@ -187,14 +206,19 @@ def gen_frames():
         s_gf = time.time()  
         while True:
             success, frame = cap.read()
-            frame = cv2.flip(frame, 1)
             
             if not success:
                 break
+
             if session.get('running'):
+
+                #อัดวิดีโอภาพที่ยังไม่ถูกประมวลผล
+                outvideo.write(frame)
                 frame = processor.process(frame, pose)
+
             else:
                 ignore = True
+
             sim = None
             with state['lock']:
                 sim = state.get('last_similarity')
@@ -207,6 +231,19 @@ def gen_frames():
             ret, buffer = cv2.imencode('.jpg', frame)
             frame_bytes = buffer.tobytes()
             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+            # ------> add newest by khao
+            # elapsed_time = (time.time() - start_time) * 1000  # ms
+            # remaining_time = max(int(delay - elapsed_time), 1)
+            # if cv2.waitKey(remaining_time) & 0xFF == ord('q'):
+            #     break
+            # if cv2.waitKey(1) == ord('q'):
+            #     break
+
+        # cap.release()
+        # outvideo.release()
+        # cv2.destroyWindow()
+
     except GeneratorExit:
         print("Client disconnected.")
     except Exception as e:
@@ -228,10 +265,9 @@ def video_feed():
 
 @app.route('/start', methods=['POST'])
 def start_session():
-    from flask import request
     data = request.get_json() or {}
     reps = int(data.get('reps', 0))
-    # เลือก 4 แบบ
+
     depth_raw = data.get('depth', None)
     try:
         target_depth = int(depth_raw) if depth_raw is not None and str(depth_raw) != '' else None
@@ -252,8 +288,9 @@ def start_session():
         'trainer_enabled': False,
         'target_depth': target_depth
     })
+    
+    session['keyframes'] = []
 
-    # รีเซ็ตไฟล์บันทึก
     try:
         global user_data
         user_data = {"reps": []}
@@ -261,6 +298,16 @@ def start_session():
 
         status_path = os.path.join('static', 'status.json')
         keyframes_dir = os.path.join('static', 'keyframes')
+
+        if os.path.exists(keyframes_dir):
+            try:
+                for filename in os.listdir(keyframes_dir):
+                    file_path = os.path.join(keyframes_dir, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                        print(f"[INFO] ลบรูป: {filename}")
+            except Exception as e:
+                print(f"[WARNING] ไม่สามารถลบรูปใน keyframes: {e}")
 
         os.makedirs(keyframes_dir, exist_ok=True)
 
@@ -301,26 +348,6 @@ def start_session():
 
     except Exception as e:
         print(f"[ERROR] Failed to reset processor tracker: {e}")
-
-    global current_session_id
-    with app.app_context():
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        exercise_name = "squat"
-        created_time = datetime.now().isoformat()
-
-        query  = ''' INSERT INTO public.sessions
-        (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,created_time)
-        VALUES (%s,%s,%s,%s,%s,%s)
-        RETURNING session_id'''
-        cursor.execute(query,(exercise_name,0,0,0,0,created_time))
-
-        current_session_id = cursor.fetchone()[0]#เก็บ session_id
-        conn.commit()
-        cursor.close()
-        conn.close()
-    print("🔵 New session created:", current_session_id)
 
     return jsonify({
         'ok': True,
@@ -378,7 +405,6 @@ def status():
                 if last_rep.get('depth_value') is not None:
                     current_depth_idx = last_rep.get('depth_value')
 
-        # หา user_vec ล่าสุดด
         user_vec = None
         if status_data.get('keyframes'):
             user_vec = status_data['keyframes'][-1].get('user_vec')
@@ -389,13 +415,12 @@ def status():
         if user_vec is None and hasattr(processor, 'state_tracker'):
             user_vec = processor.state_tracker.get('latest_user_vec')
 
-        # similarity ล่าสุด
         with state['lock']:
             similarity = state.get('last_similarity')
             if similarity is not None:
                 similarity = round(float(similarity), 2)
 
-        # อัปเดตข้อมูล rep_number ให้ครบ
+        # อัปเดตข้อมูล rep_number 
         for idx, kf in enumerate(status_data.get('keyframes', [])):
             if 'rep_number' not in kf:
                 kf['rep_number'] = idx + 1
@@ -404,8 +429,7 @@ def status():
             if 'depth_text' not in kf:
                 kf['depth_text'] = current_depth_text
 
-        # ตรวจสอบจำนวนรอบที่เสร็จ
-        done_reps = status_data.get('rounds_count', 0)
+        done_reps = session.get('done_reps', 0)
         target_reps = session.get('target_reps', 0)
         if done_reps >= target_reps and target_reps > 0:
             session['running'] = False
@@ -476,15 +500,22 @@ def get_reps():
 
 @app.route('/stop', methods=['POST'])
 def stop_session_route():
-    session['running'] = False
+    global outvideo
+    try:
+        session['running'] = False
+        if outvideo is not None and outvideo.isOpened():
+            outvideo.release()
+            print("[INFO] VideoWriter ถูกปิดสำเร็จ")
+            outvideo = cv2.VideoWriter('outvideo.avi', cv2.VideoWriter_fourcc(*'XVID'), 20.0, (640, 480))
+    except Exception as e:
+        print(f"[ERROR] ข้อผิดพลาดเมื่อปิด VideoWriter: {e}")
     return jsonify({'ok': True})
 
-## ตอนนี้ใช้ sims ในการคำนวน มี rule ที่ข้าวเขียนไว้แบบเทียบองศา ##
 @app.route('/summary')
 def summary():
     return jsonify({
         'total': calculate_summary()['total'],
-        'dept_correct': calculate_summary()['dept_correct'],
+        'depth_correct': calculate_summary()['depth_correct'],
         'correct': calculate_summary()['correct'],
         'incorrect': calculate_summary()['incorrect'],
         'average_similarity': calculate_summary()['average'],
@@ -557,13 +588,13 @@ def calculate_summary():
         filtered = reps
 
     total = len(reps)
-    dept_correct = len(filtered)
+    depth_correct = len(filtered)
 
 
     sims = [float(r.get('similarity') or 0.0) for r in filtered]
     avg = round(statistics.mean(sims), 2) if sims else None
 
-    CORRECT_THRESH = 85.0
+    CORRECT_THRESH = 80.0
 
     correct = 0
     for r in filtered:
@@ -577,7 +608,6 @@ def calculate_summary():
         
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
         
-   #######ยังได้เช็ค
         user_criteria = None
         if isinstance(r, dict):
             user_criteria = r.get('user_criteria')
@@ -604,13 +634,12 @@ def calculate_summary():
         if (sim_val >= CORRECT_THRESH) and (depth_matches) and (criteria_pass):
             correct += 1
             
-    #################
 
     incorrect = total - correct
 
     return {
         'total': total,
-        'dept_correct': dept_correct,
+        'depth_correct': depth_correct,
         'correct': correct,
         'incorrect': incorrect,
         'average': avg,
@@ -652,9 +681,7 @@ def load_user_data():
         pass
 
 def save_user_data():
-    import numpy as np
     def convert_np(obj):
-        import numpy as np
         if isinstance(obj, dict):
             return {k: convert_np(v) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -690,7 +717,6 @@ def saveToDatabase(record):
                 print("ERROR: No active session_id, cannot save rep")
                 return
             
-            # Data from reps:[] to repetitions
             user_image = record.get("user_image",None)
             accuracy_percent = record.get("similarity", 0)
             depth = record.get("depth",None)
@@ -707,32 +733,53 @@ def saveToDatabase(record):
             )
             rep_number = record.get("rep_number" , 0)
             isCorrect = record.get("isCorrect", None)
+            depth_match = record.get("depth_match", None)
+            user_criteria = record.get("user_criteria") or {}
+            if len(user_criteria) == 4 :
+                head_variance = int(user_criteria.get("head_variance", 0))
+                knee_variance = int(user_criteria.get("knee_variance", 0))
+                heel_variance = int(user_criteria.get("heel_variance", 0))
+                trunk_variance = int(user_criteria.get("trunk_variance", 0))
+            else:
+                head_variance = knee_variance = heel_variance = trunk_variance = 0
+            criteria_results = record.get("criteria_results") or {}
+            if len(criteria_results) == 4 :
+                head_pass = bool(criteria_results.get("head_variance", None))
+                knee_pass = bool(criteria_results.get("knee_variance", None))
+                heel_pass = bool(criteria_results.get("heel_variance", None))
+                trunk_pass = bool(criteria_results.get("trunk_variance", None))
+            else:
+                head_pass = knee_pass = heel_pass = trunk_pass = None
             session_id = current_session_id
 
             insertRepetition_query = '''INSERT INTO public.repetitions
-                (session_id,reps_number,iscorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
-            cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,created_time))       
+                (session_id,reps_number,iscorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,depth_match,head_variance,knee_variance,heel_variance,trunk_variance,head_pass,knee_pass,heel_pass,trunk_pass,created_time)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+            cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,depth_match,head_variance,knee_variance,heel_variance,trunk_variance,head_pass,knee_pass,heel_pass,trunk_pass,created_time))       
             conn.commit()
 
             print("📥 Repetition saved! 📥")
 
-            # Insert data to sessions
             summary = calculate_summary()
             total_count = summary['total']
+            depth_correct = summary['depth_correct']
             correct_count = summary['correct']
             incorrect_count = summary['incorrect']
             avg_accuracy_percent = summary['average']
+            target_depth = record.get("target_depth", 0)
+            target_txt = record.get("target_txt", None)
 
             update_session_query = '''UPDATE public.sessions
             SET
                 total_count = %s,
                 correct_count = %s,
                 incorrect_count = %s,
-                avg_accuracy_percent = %s
+                avg_accuracy_percent = %s,
+                depth_correct = %s,
+                target_depth = %s
             WHERE session_id = %s
             '''
-            cursor.execute(update_session_query, (total_count,correct_count,incorrect_count,avg_accuracy_percent,session_id))
+            cursor.execute(update_session_query, (total_count,correct_count,incorrect_count,avg_accuracy_percent,depth_correct,target_depth,session_id))
             conn.commit()
             cursor.close()
             conn.close()
@@ -748,5 +795,20 @@ def saveToDatabase(record):
             'error': str(e)
         }
     
+def cleanup():
+    try:
+        global cap, outvideo
+        if cap is not None and cap.isOpened():
+            cap.release()
+            print("[INFO] Camera ถูกปิดสำเร็จ")
+        if outvideo is not None and outvideo.isOpened():
+            outvideo.release()
+            print("[INFO] VideoWriter ถูกปิดสำเร็จ")
+    except Exception as e:
+        print(f"[ERROR] ข้อผิดพลาดเมื่อทำความสะอาด: {e}")
+
+import atexit
+atexit.register(cleanup)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)

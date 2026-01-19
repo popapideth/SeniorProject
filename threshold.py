@@ -1,3 +1,4 @@
+
 import mediapipe as mp
 from utils import scaledTo
 
@@ -12,7 +13,7 @@ def get_thresholds(camrera_screen_width, camera_screen_height):
 
     _ANGLE_KNEE_VERT = {
         'STAND': (0,  20),
-        'SQUATTING': (21, 100),
+        'SQUATTING': (21, 120),
     }
     _SQUAT_DEPTH = {
         'QUARTER': (45,  60),
@@ -34,7 +35,7 @@ def get_thresholds(camrera_screen_width, camera_screen_height):
         'KNEE_EXTEND_BEYOND_TOE': 15*ratio_w,
         #? add by khao---------------->
         'HEEL_FLOAT_VARIANCE':15, # deg
-        'EAR_DEGREE_VARIANCE': 30, # deg
+        'HEAD_DEGREE_VARIANCE': 30, # deg
         #? end by khao---------------->
 
         'INACTIVE_THRESH': 15.0, # time count second
