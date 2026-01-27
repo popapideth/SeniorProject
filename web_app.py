@@ -36,12 +36,6 @@ session = {
 pose = get_mediapipe_pose()
 cap = cv2.VideoCapture(0)
 
-# ------> add newest by khao
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-outvideo = cv2.VideoWriter('outvideo.avi', fourcc, 20.0, (640,  480))
-fps = cap.get(cv2.CAP_PROP_FPS)
-delay = int(1000 / fps)
-
 user_camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 user_camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -191,14 +185,12 @@ def _similarity_cb(val):
     except Exception as e:
         print("Error in similarity callback:", e)
 
-
 processor = ProcessFrame(thresholds=thresholds, similarity_callback=_similarity_cb)
 
 def gen_frames():
     try:
         s_gf = time.time()  
         while True:
-            # start_time = time.time()
             success, frame = cap.read()
             
             if not success:
@@ -206,8 +198,6 @@ def gen_frames():
 
             if session.get('running'):
 
-                #อัดวิดีโอภาพที่ยังไม่ถูกประมวลผล
-                outvideo.write(frame)
                 frame = processor.process(frame, pose)
 
             else:
@@ -225,18 +215,6 @@ def gen_frames():
             ret, buffer = cv2.imencode('.jpg', frame)
             frame_bytes = buffer.tobytes()
             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-            # ------> add newest by khao
-            # elapsed_time = (time.time() - start_time) * 1000  # ms
-            # remaining_time = max(int(delay - elapsed_time), 1)
-            # if cv2.waitKey(remaining_time) & 0xFF == ord('q'):
-            #     break
-            # if cv2.waitKey(1) == ord('q'):
-            #     break
-
-        # cap.release()
-        # outvideo.release()
-        # cv2.destroyWindow()
 
     except GeneratorExit:
         print("Client disconnected.")

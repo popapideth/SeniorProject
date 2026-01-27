@@ -4,7 +4,6 @@ import numpy as np
 import time
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.spatial.distance import euclidean
-#import seaborn as sns
 
 from screeninfo import get_monitors
 from utils import get_chosen_joints_coord, find_angle, findDistance, findModeKneeAngle, _show_feedback, \
@@ -208,9 +207,9 @@ class ProcessFrame:
             # Render detection
             self.mp_drawing.draw_landmarks(frame, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
                                     self.mp_drawing.DrawingSpec(
-                                        color = self.COLORS['light_green'], thickness=int(1*ratio_w), circle_radius=int(2*ratio_w)),
+                                        color = self.COLORS['red'], thickness=int(2*ratio_w), circle_radius=int(3*ratio_w)),
                                     self.mp_drawing.DrawingSpec(
-                                        color = self.COLORS['light_blue'], thickness=int(1*ratio_w), circle_radius=int(2*ratio_w)),
+                                        color = self.COLORS['neo_blue'], thickness=int(2*ratio_w), circle_radius=int(3*ratio_w)),
                                     )
 
             if init_landmarks[self.mp_pose.PoseLandmark.NOSE].visibility > 0.5:
@@ -328,7 +327,7 @@ class ProcessFrame:
                         cv2.ellipse(frame, (x_predict, y_test), (int(30*ratio_w), int(30*ratio_h)), 
                                     angle=0, startAngle=90+(shldr_degree_variance if sdv_contition else shldr_degree_variance*(-1)), 
                                     endAngle = 90 - (multiplier*shoulder_angle) + (shldr_degree_variance if sdv_contition else shldr_degree_variance*(-1)), 
-                                    color=self.COLORS['white'], 
+                                    color=self.COLORS['white'],
                                     thickness=2) if shoulder_angle > 0 else None
                         #? end by khao---------------->
 
