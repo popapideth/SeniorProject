@@ -513,12 +513,14 @@ def stop_session_route():
 
 @app.route('/summary')
 def summary():
+    summary_data = calculate_summary()
+    print(f"Summary: {summary_data}")
     return jsonify({
-        'total': calculate_summary()['total'],
-        'depth_correct': calculate_summary()['depth_correct'],
-        'correct': calculate_summary()['correct'],
-        'incorrect': calculate_summary()['incorrect'],
-        'average_similarity': calculate_summary()['average'],
+        'total': summary_data['total'],
+        'depth_correct': summary_data['depth_correct'],
+        'correct': summary_data['correct'],
+        'incorrect': summary_data['incorrect'],
+        'average_similarity': summary_data['average'],
     })
 
 @app.route('/get_keyframes')
@@ -783,7 +785,7 @@ def saveToDatabase(record):
             conn.commit()
             cursor.close()
             conn.close()
-            print("📦 DB saved successfully!")
+            print("DB saved successfully!")
             return {
                 'message': 'Session with Repetitions created success',
                 'session_id': session_id
