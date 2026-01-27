@@ -583,25 +583,22 @@ def calculate_summary():
     reps = user_data.get('reps', [])
     target_depth = session.get('target_depth', None)
     
-    # filter
-    if target_depth is not None:
-        filtered = [r for r in reps if r.get('depth_value') == target_depth]
-    else:
-        filtered = reps
+    # Always use all reps for summary calculation
+    filtered = reps
 
     total = len(reps)
     depth_correct = len(filtered)
 
 
-    sims = [float(r.get('similarity') or 0.0) for r in filtered]
+    sims = [float(rep.get('similarity') or 0.0) for rep in filtered]
     avg = round(statistics.mean(sims), 2) if sims else None
 
     CORRECT_THRESH = 80.0
 
     correct = 0
-    for r in filtered:
-        sim_val = float(r.get('similarity') or 0.0)
-        depth_idx = r.get('depth_value')
+    for rep in filtered:
+        sim_val = float(rep.get('similarity') or 0.0)
+        depth_idx = rep.get('depth_value')
         try:
             depth_idx_normalized = depth_idx[0] if isinstance(depth_idx, (list, tuple)) and len(depth_idx) > 0 else depth_idx
         except Exception:
@@ -611,8 +608,8 @@ def calculate_summary():
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
         
         user_criteria = None
-        if isinstance(r, dict):
-            user_criteria = r.get('user_criteria')
+        if isinstance(rep, dict):
+            user_criteria = rep.get('user_criteria')
             
         criteria_thresholds = {
             'head_variance': thresholds.get('EAR_DEGREE_VARIANCE', 30),
