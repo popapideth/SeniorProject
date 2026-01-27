@@ -104,7 +104,6 @@
                   <option value="1">Half Squat (61-80)</option>
                   <option value="2">Parallel Squat (81-100)</option>
                   <option value="3">Full Squat (101-120)</option>
-                  
                 </select>
                 <button id="start" class="btn btn-primary" disabled>
                   Start
@@ -660,6 +659,7 @@
             : null;
         document.getElementById("start").disabled = true;
         document.getElementById("reps").disabled = true;
+        document.getElementById("depth_select").disabled = true;
         // 5-second countdown
         let count = 5;
         const cd = document.getElementById("countdown");
@@ -690,6 +690,7 @@
         document.getElementById("stop").disabled = true;
         document.getElementById("start").disabled = false;
         document.getElementById("reps").disabled = false;
+        document.getElementById("depth_select").disabled = false;
         try {
           const r = await fetch("/summary");
           const j = await r.json();

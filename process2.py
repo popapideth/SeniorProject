@@ -1,12 +1,9 @@
 import cv2
-import numpy as np
 import mediapipe as mp
+import numpy as np
 import time
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.spatial.distance import euclidean
-import matplotlib.pyplot as plt
 #import seaborn as sns
 
 from screeninfo import get_monitors
@@ -176,7 +173,8 @@ class ProcessFrame:
     def get_state(self, hip_angle, knee_angle, thresholds):
         knee = None
 
-        if thresholds['HIP_VERT']['STAND'][0] <= knee_angle <= thresholds['HIP_VERT']['STAND'][1]:
+        if thresholds['HIP_VERT']['STAND'][0] <= hip_angle <= thresholds['HIP_VERT']['STAND'][1] and \
+                thresholds['KNEE_VERT']['STAND'][0] <= knee_angle <= thresholds['KNEE_VERT']['STAND'][1]:
             knee = 1
         elif thresholds['HIP_VERT']['SQUATTING'][0] <= hip_angle <= thresholds['HIP_VERT']['SQUATTING'][1] and \
                 thresholds['KNEE_VERT']['SQUATTING'][0] <= knee_angle <= thresholds['KNEE_VERT']['SQUATTING'][1]:
