@@ -193,13 +193,14 @@ def gen_frames():
         while True:
             success, frame = cap.read()
             
+            
             if not success:
                 break
 
+            # frame = cv2.flip(frame,1)    
+
             if session.get('running'):
-
                 frame = processor.process(frame, pose)
-
             else:
                 ignore = True
 

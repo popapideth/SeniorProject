@@ -4,6 +4,7 @@ import numpy as np
 import time
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.spatial.distance import euclidean
+#import seaborn as sns
 
 from screeninfo import get_monitors
 from utils import get_chosen_joints_coord, find_angle, findDistance, findModeKneeAngle, _show_feedback, \
@@ -200,16 +201,16 @@ class ProcessFrame:
 
         try:
             # if not results.pose_landmarks:
-            #     print("[DEBUG] ⚠️ No pose landmarks detected (pose.process returned None)")
+            #     print("[DEBUG] No pose landmarks detected (pose.process returned None)")
             
             init_landmarks = results.pose_landmarks.landmark
 
             # Render detection
             self.mp_drawing.draw_landmarks(frame, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
                                     self.mp_drawing.DrawingSpec(
-                                        color = self.COLORS['red'], thickness=int(2*ratio_w), circle_radius=int(3*ratio_w)),
+                                        color = self.COLORS['red'], thickness=int(1*ratio_w), circle_radius=int(2*ratio_w)),
                                     self.mp_drawing.DrawingSpec(
-                                        color = self.COLORS['neo_blue'], thickness=int(2*ratio_w), circle_radius=int(3*ratio_w)),
+                                        color = self.COLORS['neo_blue'], thickness=int(1*ratio_w), circle_radius=int(2*ratio_w)),
                                     )
 
             if init_landmarks[self.mp_pose.PoseLandmark.NOSE].visibility > 0.5:
@@ -319,15 +320,15 @@ class ProcessFrame:
                         # draw ellipse
                         # #? add by khao---------------->
                         # ปรับการวัดเส้นโค้งของการทำมุมให้ดีขึ้น
-                        # y_test = int(shoulder_coord[1] + (0.3 * (hip_coord[1] - shoulder_coord[1])))
+                        y_test = int(shoulder_coord[1] + (0.3 * (hip_coord[1] - shoulder_coord[1])))
                         y_test = shoulder_coord[1]
                         x_predict = self.imaginaryLine(shoulder_coord, hip_coord, y_test)
                         shldr_degree_variance = find_angle(hip_coord, np.array([x_predict,y_test+int(50*ratio_h)]), np.array([x_predict,y_test]))
-                        sdv_contition = (shoulder_coord[0]) > (hip_coord[0]) if multiplier==1 else (shoulder_coord[0] < hip_coord[0])
+                        sdv_contition = (shoulder_coord[0]) > (hip_coord[0]) if multiplier==-1 else (shoulder_coord[0] < hip_coord[0])
                         cv2.ellipse(frame, (x_predict, y_test), (int(30*ratio_w), int(30*ratio_h)), 
                                     angle=0, startAngle=90+(shldr_degree_variance if sdv_contition else shldr_degree_variance*(-1)), 
                                     endAngle = 90 - (multiplier*shoulder_angle) + (shldr_degree_variance if sdv_contition else shldr_degree_variance*(-1)), 
-                                    color=self.COLORS['white'],
+                                    color=self.COLORS['white'], 
                                     thickness=2) if shoulder_angle > 0 else None
                         #? end by khao---------------->
 
@@ -348,7 +349,7 @@ class ProcessFrame:
                                 cx, cy = int(
                                     landmark.x * frame_width), int(landmark.y * frame_height)
                                 cv2.line(frame, (cx, cy), (cx, cy-int(30*ratio_h)),
-                                        self.COLORS['light_purple'], 1, lineType=self.linetype)
+                                        self.COLORS['light_purple'], 2, lineType=self.linetype)
 
                         # draw line joint
                         for start_idx, end_idx in chosen_connections:
@@ -359,7 +360,7 @@ class ProcessFrame:
                             x2, y2 = int(
                                 end_landmark.x * frame_width), int(end_landmark.y * frame_height)
                             cv2.line(frame, (x1, y1), (x2, y2),
-                                    self.COLORS['light_green'], 2)
+                                    self.COLORS['light_green'], 1)
 
                         # draw dot joint 
                         for idx in chosen_joints:
@@ -367,17 +368,17 @@ class ProcessFrame:
                                 landmark = init_landmarks[idx]
                                 cx, cy = int(landmark.x * frame_width), int(landmark.y * frame_height)
 
-                                cv2.circle(frame, (cx, cy), 5,
-                                        color=self.COLORS['light_green'], thickness=-5)
+                                cv2.circle(frame, (cx, cy), 3,
+                                        color=self.COLORS['light_green'], thickness=-3)
                                          
                         # draw text
-                        cv2.putText(frame, str(shoulder_angle), shoulder_coord,
+                        cv2.putText(frame, str(shoulder_angle), (shoulder_coord[0]+int(10*ratio_w), shoulder_coord[1]),
                                     self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-                        cv2.putText(frame, str(hip_angle), hip_coord,
+                        cv2.putText(frame, str(hip_angle), (hip_coord[0]+int(10*ratio_w), hip_coord[1]),
                                     self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-                        cv2.putText(frame, str(knee_angle), knee_coord,
+                        cv2.putText(frame, str(knee_angle), (knee_coord[0]+int(-50*ratio_w), knee_coord[1]),
                                     self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-                        cv2.putText(frame, str(ankle_angle), ankle_coord,
+                        cv2.putText(frame, str(ankle_angle), (ankle_coord[0]+int(10*ratio_w), ankle_coord[1]),
                                     self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
 
                     except:
@@ -387,10 +388,10 @@ class ProcessFrame:
                     # คำนวนมุมสำหรับตรวจส้นเท้าลอย
                     im_point_FloatHeel = np.array([heel_coord[0], foot_coord[1]])
 
-                    cv2.line(frame, heel_coord, foot_coord,
-                            self.COLORS['orange'], 2)
-                    cv2.line(frame, im_point_FloatHeel, foot_coord,
-                            self.COLORS['neo_blue'], 2)
+                    # cv2.line(frame, heel_coord, foot_coord,
+                    #         self.COLORS['orange'], 2)
+                    # cv2.line(frame, im_point_FloatHeel, foot_coord,
+                    #         self.COLORS['neo_blue'], 2)
                     #? end by khao---------------->
 
                     # ------------------------------------------ After calculate angle to change state
@@ -424,23 +425,23 @@ class ProcessFrame:
                             HEAD_DEGREE_VALUE = find_angle(ear_coord, im_point_ear, shoulder_coord)
                             if (HEAD_DEGREE_VALUE > self.thresholds['HEAD_DEGREE_VARIANCE']):
                                 self.state_tracker['POINT_OF_MISTAKE'][1] = True
-                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[1], HEAD_DEGREE_VALUE)                
+                                # frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[1], HEAD_DEGREE_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, ear_coord)
 
                             KNEE_EXTEND_BEYOND_TOE_VALUE = abs(knee_coord[0] - foot_coord[0])
                             if KNEE_EXTEND_BEYOND_TOE_VALUE > self.thresholds['KNEE_EXTEND_BEYOND_TOE']:
                                 self.state_tracker['POINT_OF_MISTAKE'][2] = True
                                 self.state_tracker['INCORRECT_POSTURE'] = True
-                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[2], KNEE_EXTEND_BEYOND_TOE_VALUE)                
+                                # frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[2], KNEE_EXTEND_BEYOND_TOE_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, knee_coord)
 
                             HEEL_FLOAT_VALUE = find_angle(heel_coord, im_point_FloatHeel, foot_coord) 
-                            cv2.putText(frame, str(HEEL_FLOAT_VALUE), foot_coord,
+                            cv2.putText(frame, str(HEEL_FLOAT_VALUE), (foot_coord[0]+int(-30*ratio_w), foot_coord[1]),
                                     self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
                             if(HEEL_FLOAT_VALUE > self.thresholds['HEEL_FLOAT_VARIANCE']):
                                 self.state_tracker['POINT_OF_MISTAKE'][4] = True
                                 self.state_tracker['INCORRECT_POSTURE'] = True
-                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[4], HEEL_FLOAT_VALUE)                
+                                # frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[4], HEEL_FLOAT_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, heel_coord)
 
                             # เมื่อความเอียงลำตัว > ความเอียงกระดูกแข้ง มากกว่า 10° 
@@ -449,7 +450,7 @@ class ProcessFrame:
                             if NEUTRAL_BIAS_TRUNK_TIBIA_VALUE > self.thresholds['NEUTRAL_BIAS_TRUNK_TIBIA_ANGLE']:
                                 self.state_tracker['POINT_OF_MISTAKE'][5] = True
                                 self.state_tracker['INCORRECT_POSTURE'] = True
-                                frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[5], NEUTRAL_BIAS_TRUNK_TIBIA_VALUE)                
+                                # frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[5], NEUTRAL_BIAS_TRUNK_TIBIA_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, shoulder_coord, hip_coord)
                             #? end by khao-------------------> 
 
@@ -485,7 +486,7 @@ class ProcessFrame:
                                     })
 
                                     print(
-                                        f"📝 select frame: {self.state_tracker['selected_frame'][-1]['angles']}")
+                                        f"select frame: {self.state_tracker['selected_frame'][-1]['angles']}")
 
                                     self.state_tracker['selected_frame_count'] += 1
                                     self.state_tracker['stable_pose_time_count'] = 0
@@ -513,9 +514,9 @@ class ProcessFrame:
                             keyframe=self.state_tracker['keyframe'], option=1)
                         
                         
-                        print(f"✅ Keyframe: {self.state_tracker['keyframe']['angles']}")
+                        print(f"Keyframe: {self.state_tracker['keyframe']['angles']}")
 
-                        print(f"⁉️ User criteria: {self.state_tracker['keyframe']['user_criteria']}")
+                        print(f"User criteria: {self.state_tracker['keyframe']['user_criteria']}")
                         
                         #cosine 127,39,98,32
                         # เก็บค่า trainer vector สำหรับเปรียบเทียบ
