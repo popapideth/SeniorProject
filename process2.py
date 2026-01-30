@@ -53,6 +53,17 @@ class ProcessFrame:
                             (12, 24),
                             (24, 26),
                             (26, 28)]
+        
+        #? add by khao----------------> kv503
+        self.squat_posture_criteria_left = [(7, 11),
+                            (11, 23),
+                            (25, 27),
+                            (29, 31),]
+        self.squat_posture_criteria_right = [(8, 12),
+                            (12, 24),
+                            (26, 28),
+                            (30, 32),]
+        #? end by khao----------------> kv503
 
         self.dict_features = {}
 
@@ -282,9 +293,14 @@ class ProcessFrame:
                         #? end by khao---------------->
                         foot_coord = left_foot_coord
 
+                        #? add by khao----------------> kv503
+                        chosen_features = self.left_features
+                        chosen_squat_posture_criteria_side = self.squat_posture_criteria_left
+                        #? end by khao----------------> kv503
+
                         multiplier = -1
 
-                    elif left_shoulder_z > right_shoulder_z:
+                    elif left_shoulder_z >= right_shoulder_z:
                         chosen_joints = self.right_joints
                         chosen_connections = self.right_connections
                         #? add by khao---------------->
@@ -300,6 +316,11 @@ class ProcessFrame:
                         heel_coord = right_heel_coord
                         #? end by khao---------------->
                         foot_coord = right_foot_coord
+
+                        #? add by khao----------------> kv503
+                        chosen_features = self.right_features
+                        chosen_squat_posture_criteria_side = self.squat_posture_criteria_right
+                        #? end by khao----------------> kv503
 
                         multiplier = 1
 
@@ -317,6 +338,7 @@ class ProcessFrame:
                         current_state = self.get_state(int(hip_angle), int(knee_angle), self.thresholds)
                         self.update_state_sequence(current_state)
 
+                        '''
                         # draw ellipse
                         # #? add by khao---------------->
                         # ปรับการวัดเส้นโค้งของการทำมุมให้ดีขึ้น
@@ -340,7 +362,6 @@ class ProcessFrame:
                                     color=self.COLORS['white'], thickness=1) if ankle_angle > 0 else None
                         # cv2.ellipse(frame, (ankle_coord[0], ankle_coord[1]-int(10*ratio_h)), (int(15*ratio_w), int(15*ratio_h)), angle=0, startAngle=-90, endAngle=-90 + multiplier*ankle_angle,
                         #             color=self.COLORS['white'], thickness=1) if ankle_angle > 0 else None
-
 
                         # draw perpendicular line
                         for idx in chosen_joints:
@@ -380,18 +401,13 @@ class ProcessFrame:
                                     self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
                         cv2.putText(frame, str(ankle_angle), (ankle_coord[0]+int(10*ratio_w), ankle_coord[1]),
                                     self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
-
+                        '''
                     except:
                         pass
 
                     #? add by khao---------------->
                     # คำนวนมุมสำหรับตรวจส้นเท้าลอย
                     im_point_FloatHeel = np.array([heel_coord[0], foot_coord[1]])
-
-                    # cv2.line(frame, heel_coord, foot_coord,
-                    #         self.COLORS['orange'], 2)
-                    # cv2.line(frame, im_point_FloatHeel, foot_coord,
-                    #         self.COLORS['neo_blue'], 2)
                     #? end by khao---------------->
 
                     # ------------------------------------------ After calculate angle to change state
@@ -436,8 +452,6 @@ class ProcessFrame:
                                 frame = self.spotMistakePoint(frame, self.COLORS, knee_coord)
 
                             HEEL_FLOAT_VALUE = find_angle(heel_coord, im_point_FloatHeel, foot_coord) 
-                            cv2.putText(frame, str(HEEL_FLOAT_VALUE), (foot_coord[0]+int(-30*ratio_w), foot_coord[1]),
-                                    self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
                             if(HEEL_FLOAT_VALUE > self.thresholds['HEEL_FLOAT_VARIANCE']):
                                 self.state_tracker['POINT_OF_MISTAKE'][4] = True
                                 self.state_tracker['INCORRECT_POSTURE'] = True
@@ -453,6 +467,54 @@ class ProcessFrame:
                                 # frame = _show_mistake_point_feedback(frame, self.MISTAKE_ID_MAP[5], NEUTRAL_BIAS_TRUNK_TIBIA_VALUE)                
                                 frame = self.spotMistakePoint(frame, self.COLORS, shoulder_coord, hip_coord)
                             #? end by khao-------------------> 
+
+                            #? add by khao-------------------> kv503
+                            try:
+                                # draw line for the area of ​​the indicator showing the squat posture during squats
+                                for start_idx, end_idx in chosen_squat_posture_criteria_side:
+                                    start_landmark = init_landmarks[start_idx]
+                                    end_landmark = init_landmarks[end_idx]
+                                    x1, y1 = int(
+                                        start_landmark.x * frame_width), int(start_landmark.y * frame_height)
+                                    x2, y2 = int(
+                                        end_landmark.x * frame_width), int(end_landmark.y * frame_height)
+                                    cv2.line(frame, (x1, y1), (x2, y2),
+                                            self.COLORS['pink'], 1)
+                                    
+                                cv2.line(frame, foot_coord, im_point_FloatHeel,
+                                        self.COLORS['light_purple'], 1)
+                                
+                                # # draw perpendicular line
+                                for jointname in chosen_features:
+                                    if jointname in ['shoulder', 'hip', 'knee', 'ankle']:
+                                        landmark = init_landmarks[chosen_features[jointname]]
+                                        cx, cy = int(
+                                            landmark.x * frame_width), int(landmark.y * frame_height)
+                                        cv2.line(frame, (cx, cy), (cx, cy-int(40*ratio_h)),
+                                                self.COLORS['light_purple'], 2, lineType=self.linetype)
+                                
+                                # draw dot joint
+                                for jointname in chosen_features:
+                                    if jointname not in ['elbow', 'wrist']:
+                                        landmark = init_landmarks[chosen_features[jointname]]
+                                        cx, cy = int(landmark.x * frame_width), int(landmark.y * frame_height)
+                                        cv2.circle(frame, (cx, cy), 3,
+                                                color=self.COLORS['magenta'], thickness=-3)
+
+                                # text for indicators of squat posture during squats
+                                cv2.putText(frame, str(HEAD_DEGREE_VALUE), (shoulder_coord[0]+int(10*ratio_w), shoulder_coord[1]),
+                                            self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                                cv2.putText(frame, str(hip_angle), (hip_coord[0]+int(10*ratio_w), hip_coord[1]),
+                                            self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                                cv2.putText(frame, str(KNEE_EXTEND_BEYOND_TOE_VALUE), (knee_coord[0]+int(-50*ratio_w), knee_coord[1]),
+                                        self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                                cv2.putText(frame, str(ankle_angle), (ankle_coord[0]+int(10*ratio_w), ankle_coord[1]),
+                                        self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                                cv2.putText(frame, str(HEEL_FLOAT_VALUE), (foot_coord[0]+int(-50*ratio_w), foot_coord[1]),
+                                        self.fontFace_ptf, self.fontScale_ptf, self.COLORS['yellow'], 2)
+                            except Exception as e: 
+                                print(e)
+                            #? end by khao-------------------> kv503 
 
                             if self.state_tracker['prev_knee_angle'] is not None:
                                 delta = abs(knee_angle - self.state_tracker['prev_knee_angle'])
