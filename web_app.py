@@ -232,17 +232,6 @@ def gen_frames():
             frame_bytes = buffer.tobytes()
             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
-            # ------> add newest by khao
-            # elapsed_time = (time.time() - start_time) * 1000  # ms
-            # remaining_time = max(int(delay - elapsed_time), 1)
-            # if cv2.waitKey(remaining_time) & 0xFF == ord('q'):
-            #     break
-            # if cv2.waitKey(1) == ord('q'):
-            #     break
-
-        # cap.release()
-        # outvideo.release()
-        # cv2.destroyWindow()
 
     except GeneratorExit:
         print("Client disconnected.")
@@ -583,7 +572,6 @@ def calculate_summary():
     reps = user_data.get('reps', [])
     target_depth = session.get('target_depth', None)
     
-    # Always use all reps for summary calculation
     filtered = reps
 
     total = len(reps)
@@ -800,9 +788,6 @@ def cleanup():
         if cap is not None and cap.isOpened():
             cap.release()
             print("[INFO] Camera ถูกปิดสำเร็จ")
-        if outvideo is not None and outvideo.isOpened():
-            outvideo.release()
-            print("[INFO] VideoWriter ถูกปิดสำเร็จ")
     except Exception as e:
         print(f"[ERROR] ข้อผิดพลาดเมื่อทำความสะอาด: {e}")
 
