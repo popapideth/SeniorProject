@@ -41,11 +41,6 @@ if not cap.isOpened():
     print("[ERROR] ไม่สามารถเปิด camera ได้ โปรแกรมจะหยุด")
     raise RuntimeError("Camera not available")
 
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-outvideo = cv2.VideoWriter('outvideo.avi', fourcc, 20.0, (640,  480))
-fps = cap.get(cv2.CAP_PROP_FPS)
-delay = int(1000 / fps)
-
 user_camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 user_camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -75,7 +70,7 @@ def _similarity_cb(val):
             rep_number = session.get("done_reps", 0) + 1
             timestamp = time.time()
 
-        print(f"rep_number: {rep_number}")
+        # print(f"rep_number: {rep_number}")
             
         if isinstance(val, dict):
             depth_text = val.get('depth')
@@ -152,7 +147,7 @@ def _similarity_cb(val):
         target_depth = session.get('target_depth')
         target_txt = processor.DEPTH_MAP.get(target_depth)
         
-        print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
+        # print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
         
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
         thres_t = sim_val >= CORRECT_THRESH
@@ -180,7 +175,7 @@ def _similarity_cb(val):
         session.setdefault("keyframes", []).append(record)
         user_data.setdefault("reps", []).append(record)
         save_user_data()
-        print(f"user_data['rep']: {user_data['reps']}")
+        # print(f"user_data['rep']: {user_data['reps']}")
 
         # with app.app_context():
         #     saveToDatabase(record)
@@ -204,7 +199,7 @@ processor = ProcessFrame(thresholds=thresholds, similarity_callback=_similarity_
 
 def gen_frames():
     try:
-        s_gf = time.time()  
+        # s_gf = time.time()  
         while True:
             success, frame = cap.read()
             
@@ -216,7 +211,6 @@ def gen_frames():
             if session.get('running'):
 
                 #อัดวิดีโอภาพที่ยังไม่ถูกประมวลผล
-                outvideo.write(frame)
                 frame = processor.process(frame, pose)
 
             else:
@@ -226,10 +220,10 @@ def gen_frames():
             with state['lock']:
                 sim = state.get('last_similarity')
 
-            elasped_s_gf = time.time() - s_gf
-            if sim is not None and session['running'] == True and elasped_s_gf>=1.0:
-                print(f"Current similarity: {sim}%")
-                s_gf = time.time()
+            # elasped_s_gf = time.time() - s_gf
+            # if sim is not None and session['running'] == True and elasped_s_gf>=1.0:
+            #     # print(f"Current similarity: {sim}%")
+            #     s_gf = time.time()
 
             ret, buffer = cv2.imencode('.jpg', frame)
             frame_bytes = buffer.tobytes()
@@ -349,6 +343,14 @@ def start_session():
         'keyframes': [],
     })
 
+# add by khao -------------------> kv503 
+# def get4postures():
+#     data = processor.state_tracker.get("squatPostures")
+#     return jsonify({
+#             fourpostures_value:data
+#         })
+
+
 @app.route('/toggle_trainer', methods=['POST'])
 def toggle_trainer():
     session['trainer_enabled'] = not session.get('trainer_enabled', False)
@@ -441,7 +443,7 @@ def status():
         if state.get('play_sound'):
             state['play_sound'] = False
 
-        print(f"[STATUS] {response_data}")
+        # print(f"[STATUS] {response_data}")
         return jsonify(response_data)
 
     except Exception as e:
@@ -491,21 +493,13 @@ def get_reps():
 
 @app.route('/stop', methods=['POST'])
 def stop_session_route():
-    global outvideo
-    try:
-        session['running'] = False
-        if outvideo is not None and outvideo.isOpened():
-            outvideo.release()
-            print("[INFO] VideoWriter ถูกปิดสำเร็จ")
-            outvideo = cv2.VideoWriter('outvideo.avi', cv2.VideoWriter_fourcc(*'XVID'), 20.0, (640, 480))
-    except Exception as e:
-        print(f"[ERROR] ข้อผิดพลาดเมื่อปิด VideoWriter: {e}")
+    session['running'] = False
     return jsonify({'ok': True})
 
 @app.route('/summary')
 def summary():
     summary_data = calculate_summary()
-    print(f"Summary: {summary_data}")
+    # print(f"Summary: {summary_data}")
     return jsonify({
         'total': summary_data['total'],
         'depth_correct': summary_data['depth_correct'],
@@ -633,7 +627,6 @@ def calculate_summary():
         'incorrect': incorrect,
         'average': avg,
     }
-
 
 def load_user_data():
     global user_data
@@ -783,18 +776,6 @@ def saveToDatabase(record):
             'message': 'Error saving to DB',
             'error': str(e)
         }
-    
-def cleanup():
-    try:
-        global cap, outvideo
-        if cap is not None and cap.isOpened():
-            cap.release()
-            print("[INFO] Camera ถูกปิดสำเร็จ")
-    except Exception as e:
-        print(f"[ERROR] ข้อผิดพลาดเมื่อทำความสะอาด: {e}")
-
-import atexit
-atexit.register(cleanup)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)

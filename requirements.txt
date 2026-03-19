@@ -7,6 +7,10 @@ screeninfo==0.8.1
 Flask==3.1.2
 scikit-learn==1.7.2
 
+#by khao
+# Flask-SocketIO==5.6.0
+# eventlet==0.40.4
+
 #backend
 psycopg2==2.9.11
 python-dotenv==1.1.1
