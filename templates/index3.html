@@ -12,61 +12,37 @@
       rel="stylesheet"
     />
     <style>
-      body {
-        background: #f6f8fa;
-      }
+      body { background: #f6f8fa; }
 
-      .card {
-        box-shadow: 0 2px 8px #3729295a;
-      }
+      .card { box-shadow: 0 2px 8px #3729295a; }
 
-      #live {
-        background: #000000ff;
-      }
+      #live { background: #000000ff; }
 
-      .keyframes-container {
-        height: 400px;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-      }
+      .controls-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+      .controls-row .form-control, .controls-row .form-select { min-width: 90px; max-width: 100%; }
 
-      #keyframes {
-        position: relative;
-        height: 320px;
-        overflow: hidden;
-      }
+      #preview_area { max-height: 60vh; display: flex; align-items: center; justify-content: center; }
+      #live { width: 100%; height: auto; max-height: 60vh; object-fit: cover; border-radius: 8px; }
 
-      #keyframes .card {
-        transition: all 0.3s ease;
-        opacity: 1;
-        position: absolute;
-        width: 100%;
-        left: 0;
-        right: 0;
-      }
+      .keyframes-container { max-height: 50vh; display: flex; flex-direction: column; position: relative; }
+      #keyframes { position: relative; max-height: 40vh; overflow-y: auto; display: flex; align-items: center; justify-content: center; padding: .5rem; }
 
-      #keyframes .card.fade-out {
-        opacity: 0;
-        transform: translateX(-20px);
-      }
+      #keyframes .card { transition: all 0.3s ease; opacity: 1; position: relative; width: 100%; left: 0; right: 0; }
+      #keyframes .card.fade-out { opacity: 0; transform: translateX(-20px); }
+      #keyframes .card.fade-in { opacity: 1; transform: translateX(0); }
 
-      #keyframes .card.fade-in {
-        opacity: 1;
-        transform: translateX(0);
-      }
+      .bi { display: inline-block; vertical-align: -0.125em; }
+      .bi-chevron-left::before { content: "‹"; }
+      .bi-chevron-right::before { content: "›"; }
 
-      .bi {
-        display: inline-block;
-        vertical-align: -0.125em;
-      }
+      #kf_user { width: 100%; height: auto; max-height: 30vh; object-fit: cover; border-radius: 8px; border: 2px solid #eee; margin-bottom: 10px; }
 
-      .bi-chevron-left::before {
-        content: "‹";
-      }
-
-      .bi-chevron-right::before {
-        content: "›";
+      @media (max-width: 767.98px) {
+        #preview_area { max-height: 40vh; }
+        #live { max-height: 40vh; }
+        .keyframes-container { max-height: 40vh; }
+        .btn { font-size: .9rem; }
+        .controls-row { gap: .4rem; }
       }
     </style>
     <script src="/static/sounds.js"></script>
@@ -84,20 +60,18 @@
         <div class="col-md-8">
           <div class="card mb-3">
             <div class="card-body">
-              <div class="d-flex gap-2 align-items-center mb-3">
+              <div class="d-flex gap-2 align-items-center mb-3 controls-row">
                 <div class="reps-me"></div>
                 <input
                   id="reps"
                   type="number"
-                  class="form-control"
-                  style="width: 90px"
+                  class="form-control w-auto"
                   placeholder="Reps"
                   min="1"
                 />
                 <select
                   id="depth_select"
                   class="form-select"
-                  style="width: 240px"
                 >
                   <option value="">Select Squat Depth</option>
                   <option value="0">Quarter Squat (45-60)</option>
@@ -119,17 +93,8 @@
                 <div id="countdown" class="ms-3 text-muted fw-bold"></div>
               </div>
 
-              <div
-                id="preview_area"
-                class="position-relative"
-                style="min-height: 520px"
-              >
-                <img
-                  id="live"
-                  src="/video"
-                  class="w-100"
-                  style="height: 520px; object-fit: cover"
-                />
+              <div id="preview_area" class="position-relative">
+                <img id="live" src="/video" class="w-100" />
               </div>
 
               <div class="mt-3">
@@ -173,14 +138,6 @@
                   id="kf_user"
                   src="/static/placeholder.png"
                   alt="user keyframe"
-                  style="
-                    width: 100%;
-                    height: 200px;
-                    object-fit: cover;
-                    border-radius: 8px;
-                    border: 2px solid #eee;
-                    margin-bottom: 10px;
-                  "
                 />
                 <div
                   id="sim"
@@ -580,7 +537,7 @@
                   <img src="${
                     kf.user_image || "/static/placeholder.png"
                   }?t=${Date.now()}"
-                       style="width:200px; height:180px; object-fit:cover; border-radius:8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                       style="max-width:200px; width:100%; height:auto; object-fit:cover; border-radius:8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 </div>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <h5 class="mb-0">Rep #${kf.rep_number || page}</h5>

@@ -8,8 +8,12 @@
     <style>
         body { padding: 20px; background: #f8f9fa; }
         .card { margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .btn-test { margin: 10px; min-width: 200px; }
+        .btn-test { margin: 10px; }
         .volume-control { width: 200px; margin: 10px; }
+        @media (max-width: 767.98px) {
+            .btn-test { width: 100%; }
+            .volume-control { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -59,7 +63,6 @@
             try {
                 if (typeof enableAudio === 'function') await enableAudio();
             } catch (e) { console.warn('enable audio', e); }
-            // play and pause quickly to unlock audio in some browsers
             try { completeSound.play().then(() => completeSound.pause(), () => {}); } catch(e) {}
             document.getElementById('enable_audio').disabled = true;
         });

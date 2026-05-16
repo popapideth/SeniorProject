@@ -41,11 +41,6 @@ if not cap.isOpened():
     print("[ERROR] ไม่สามารถเปิด camera ได้ โปรแกรมจะหยุด")
     raise RuntimeError("Camera not available")
 
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-outvideo = cv2.VideoWriter('outvideo.avi', fourcc, 20.0, (640,  480))
-fps = cap.get(cv2.CAP_PROP_FPS)
-delay = int(1000 / fps)
-
 user_camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 user_camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -67,11 +62,7 @@ def _similarity_cb(val):
         if isinstance(val, dict):
             similarity = float(val.get("similarity", 0))
             user_landmarks_visibility = val.get("user_landmarks_visibility")
-<<<<<<< HEAD
-            user_landmarks_Z = val.get("user_landmarks_z")
-=======
             user_landmarks_z = val.get("user_landmarks_z")
->>>>>>> origin/cordelia
             rep_number = val.get("rep_number")
             timestamp = val.get("timestamp", time.time())
         else:
@@ -79,7 +70,7 @@ def _similarity_cb(val):
             rep_number = session.get("done_reps", 0) + 1
             timestamp = time.time()
 
-        print(f"rep_number: {rep_number}")
+        # print(f"rep_number: {rep_number}")
             
         if isinstance(val, dict):
             depth_text = val.get('depth')
@@ -156,7 +147,7 @@ def _similarity_cb(val):
         target_depth = session.get('target_depth')
         target_txt = processor.DEPTH_MAP.get(target_depth)
         
-        print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
+        # print(f"!!!!!!!!!!!!!!!! << Target depth: {target_depth} ({target_txt})")
         
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
         thres_t = sim_val >= CORRECT_THRESH
@@ -164,17 +155,6 @@ def _similarity_cb(val):
         is_correct = thres_t and depth_matches and criteria_pass
         record = {
             "user_image": f"/static/keyframes/frame_{int(timestamp * 1000)}.jpg",
-<<<<<<< HEAD
-            "similarity": sim_val,
-            "depth": depth_text,
-            "depth_value": depth_idx_normalized,
-            "target_txt": target_txt,
-            "target_depth": target_depth,
-            "user_vec": user_vec,
-            "Z": user_landmarks_Z,
-            "visibility": user_landmarks_visibility,
-=======
->>>>>>> origin/cordelia
             "timestamp": int(timestamp * 1000),
             "rep_number": current_rep_number,
             "target_depth": target_depth,
@@ -182,15 +162,11 @@ def _similarity_cb(val):
             "depth_value": depth_idx_normalized,
             "depth": depth_text,
             "depth_match": bool(depth_matches),
-<<<<<<< HEAD
-            "sim_t": bool(thres_t),
-=======
             "user_vec": user_vec,
             "similarity": sim_val,
             "sim_t": bool(thres_t),
             "visibility": user_landmarks_visibility,
             "z": user_landmarks_z,
->>>>>>> origin/cordelia
             "user_criteria": user_criteria,
             "criteria_results": criteria_results,
             "isCorrect": bool(is_correct),
@@ -199,8 +175,10 @@ def _similarity_cb(val):
         session.setdefault("keyframes", []).append(record)
         user_data.setdefault("reps", []).append(record)
         save_user_data()
-        print(f"user_data['rep']: {user_data['reps']}")
+        # print(f"user_data['rep']: {user_data['reps']}")
 
+        # with app.app_context():
+        #     saveToDatabase(record)
 
         try:
             with state['lock']:
@@ -217,22 +195,22 @@ def _similarity_cb(val):
     except Exception as e:
         print("Error in similarity callback:", e)
 
-
 processor = ProcessFrame(thresholds=thresholds, similarity_callback=_similarity_cb)
 
 def gen_frames():
     try:
-        s_gf = time.time()  
+        # s_gf = time.time()  
         while True:
             success, frame = cap.read()
             
             if not success:
                 break
 
+            # frame = cv2.flip(frame,1)    
+
             if session.get('running'):
 
                 #อัดวิดีโอภาพที่ยังไม่ถูกประมวลผล
-                outvideo.write(frame)
                 frame = processor.process(frame, pose)
 
             else:
@@ -242,26 +220,14 @@ def gen_frames():
             with state['lock']:
                 sim = state.get('last_similarity')
 
-            elasped_s_gf = time.time() - s_gf
-            if sim is not None and session['running'] == True and elasped_s_gf>=1.0:
-                print(f"Current similarity: {sim}%")
-                s_gf = time.time()
+            # elasped_s_gf = time.time() - s_gf
+            # if sim is not None and session['running'] == True and elasped_s_gf>=1.0:
+            #     # print(f"Current similarity: {sim}%")
+            #     s_gf = time.time()
 
             ret, buffer = cv2.imencode('.jpg', frame)
             frame_bytes = buffer.tobytes()
             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-            # ------> add newest by khao
-            # elapsed_time = (time.time() - start_time) * 1000  # ms
-            # remaining_time = max(int(delay - elapsed_time), 1)
-            # if cv2.waitKey(remaining_time) & 0xFF == ord('q'):
-            #     break
-            # if cv2.waitKey(1) == ord('q'):
-            #     break
-
-        # cap.release()
-        # outvideo.release()
-        # cv2.destroyWindow()
 
     except GeneratorExit:
         print("Client disconnected.")
@@ -368,29 +334,6 @@ def start_session():
     except Exception as e:
         print(f"[ERROR] Failed to reset processor tracker: {e}")
 
-<<<<<<< HEAD
-    global current_session_id
-    with app.app_context():
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        exercise_name = "squat"
-        created_time = datetime.now().isoformat()
-
-        query  = ''' INSERT INTO public.sessions
-        (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,depth_correct,target_depth,created_time)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-        RETURNING session_id'''
-        cursor.execute(query,(exercise_name,0,0,0,0,0,0,created_time))
-
-        current_session_id = cursor.fetchone()[0]#เก็บ session_id
-        conn.commit()
-        cursor.close()
-        conn.close()
-    print("New session created:", current_session_id)
-
-=======
->>>>>>> origin/cordelia
     return jsonify({
         'ok': True,
         'target_reps': reps,
@@ -399,6 +342,14 @@ def start_session():
         'running': True,
         'keyframes': [],
     })
+
+# add by khao -------------------> kv503 
+# def get4postures():
+#     data = processor.state_tracker.get("squatPostures")
+#     return jsonify({
+#             fourpostures_value:data
+#         })
+
 
 @app.route('/toggle_trainer', methods=['POST'])
 def toggle_trainer():
@@ -492,7 +443,7 @@ def status():
         if state.get('play_sound'):
             state['play_sound'] = False
 
-        print(f"[STATUS] {response_data}")
+        # print(f"[STATUS] {response_data}")
         return jsonify(response_data)
 
     except Exception as e:
@@ -515,27 +466,46 @@ def trainer_exists():
     trainer_path = os.path.join(os.path.dirname(__file__), 'static', 'trainer.mp4')
     return jsonify({'exists': os.path.exists(trainer_path)})
 
+@app.route('/get_reps')
+def get_reps():
+    try:
+        summary = calculate_summary()
+        reps = user_data.get('reps', [])
+
+        return jsonify({
+            'reps': reps,
+            'average': summary()['average'],
+            'total': summary()['total'],
+            'dept_correct': summary()['dept_correct'],
+            'correct': summary()['correct'],
+            'incorrect': summary()['incorrect'],
+        })
+
+    except Exception as e:
+        print('Error in get_reps endpoint:', e)
+        return jsonify({
+            'reps': [],
+            'average': None,
+            'total': 0,
+            'correct': 0,
+            'incorrect': 0
+        })
+
 @app.route('/stop', methods=['POST'])
 def stop_session_route():
-    global outvideo
-    try:
-        session['running'] = False
-        if outvideo is not None and outvideo.isOpened():
-            outvideo.release()
-            print("[INFO] VideoWriter ถูกปิดสำเร็จ")
-            outvideo = cv2.VideoWriter('outvideo.avi', cv2.VideoWriter_fourcc(*'XVID'), 20.0, (640, 480))
-    except Exception as e:
-        print(f"[ERROR] ข้อผิดพลาดเมื่อปิด VideoWriter: {e}")
+    session['running'] = False
     return jsonify({'ok': True})
 
 @app.route('/summary')
 def summary():
+    summary_data = calculate_summary()
+    # print(f"Summary: {summary_data}")
     return jsonify({
-        'total': calculate_summary()['total'],
-        'depth_correct': calculate_summary()['depth_correct'],
-        'correct': calculate_summary()['correct'],
-        'incorrect': calculate_summary()['incorrect'],
-        'average_similarity': calculate_summary()['average'],
+        'total': summary_data['total'],
+        'depth_correct': summary_data['depth_correct'],
+        'correct': summary_data['correct'],
+        'incorrect': summary_data['incorrect'],
+        'average_similarity': summary_data['average'],
     })
 
 @app.route('/get_keyframes')
@@ -598,25 +568,21 @@ def calculate_summary():
     reps = user_data.get('reps', [])
     target_depth = session.get('target_depth', None)
     
-    # filter
-    if target_depth is not None:
-        filtered = [r for r in reps if r.get('depth_value') == target_depth]
-    else:
-        filtered = reps
+    filtered = reps
 
     total = len(reps)
     depth_correct = len(filtered)
 
 
-    sims = [float(r.get('similarity') or 0.0) for r in filtered]
+    sims = [float(rep.get('similarity') or 0.0) for rep in filtered]
     avg = round(statistics.mean(sims), 2) if sims else None
 
     CORRECT_THRESH = 80.0
 
     correct = 0
-    for r in filtered:
-        sim_val = float(r.get('similarity') or 0.0)
-        depth_idx = r.get('depth_value')
+    for rep in filtered:
+        sim_val = float(rep.get('similarity') or 0.0)
+        depth_idx = rep.get('depth_value')
         try:
             depth_idx_normalized = depth_idx[0] if isinstance(depth_idx, (list, tuple)) and len(depth_idx) > 0 else depth_idx
         except Exception:
@@ -626,8 +592,8 @@ def calculate_summary():
         depth_matches = (depth_idx_normalized == target_depth) if target_depth is not None else True
         
         user_criteria = None
-        if isinstance(r, dict):
-            user_criteria = r.get('user_criteria')
+        if isinstance(rep, dict):
+            user_criteria = rep.get('user_criteria')
             
         criteria_thresholds = {
             'head_variance': thresholds.get('EAR_DEGREE_VARIANCE', 30),
@@ -661,7 +627,6 @@ def calculate_summary():
         'incorrect': incorrect,
         'average': avg,
     }
-
 
 def load_user_data():
     global user_data
@@ -775,14 +740,10 @@ def saveToDatabase(record):
             cursor.execute(insertRepetition_query, (session_id,rep_number,isCorrect,depth_value,shoulder_angle,hip_angle,knee_angle,ankle_angle,accuracy_percent,depth_match,head_variance,knee_variance,heel_variance,trunk_variance,head_pass,knee_pass,heel_pass,trunk_pass,created_time))       
             conn.commit()
 
-            print("Repetition saved!")
+            print("📥 Repetition saved! 📥")
 
             summary = calculate_summary()
             total_count = summary['total']
-<<<<<<< HEAD
-            ## ประเภทความลึกที่เลือก ถูกตามที่กำหนดไว้ไหม
-=======
->>>>>>> origin/cordelia
             depth_correct = summary['depth_correct']
             correct_count = summary['correct']
             incorrect_count = summary['incorrect']
@@ -815,21 +776,6 @@ def saveToDatabase(record):
             'message': 'Error saving to DB',
             'error': str(e)
         }
-    
-def cleanup():
-    try:
-        global cap, outvideo
-        if cap is not None and cap.isOpened():
-            cap.release()
-            print("[INFO] Camera ถูกปิดสำเร็จ")
-        if outvideo is not None and outvideo.isOpened():
-            outvideo.release()
-            print("[INFO] VideoWriter ถูกปิดสำเร็จ")
-    except Exception as e:
-        print(f"[ERROR] ข้อผิดพลาดเมื่อทำความสะอาด: {e}")
-
-import atexit
-atexit.register(cleanup)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
