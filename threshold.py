@@ -26,7 +26,7 @@ def get_thresholds(camrera_screen_width, camera_screen_height):
         'KNEE_VERT': _ANGLE_KNEE_VERT, # deg
         'SQUAT_DEPTHS': _SQUAT_DEPTH, # deg
         'DELTA_TRANS_KNEE_ANGLE': 2,  # deg
-        'STABLE_POSE_TIME_COUNT': 0.25,  # time count second
+        'STABLE_POSE_TIME_COUNT': 0.125,  # time count second
         'OFFSET_SHOULDERS_X': 40*ratio_w,
         'OFFSET_ANKLES_X': 40*ratio_w,
 

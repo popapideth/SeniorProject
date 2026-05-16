@@ -113,6 +113,22 @@ def save_keyframe_csv(keyframe, filename="keyframes_full.csv", path="./data"):
     df.to_csv(filepath, mode="a", header=not os.path.exists(
         filepath), index=False)
 
+def save_angles_csv(angle, time, filename="default_csv_file.csv", path="./data_angles5", option=0):
+
+    data = {
+        "angle": [int(angle)],
+        "time": [round(time, 2)],
+    }
+    df = pd.DataFrame(data)
+    
+    if option:
+        return df
+    else:
+        # สร้างโฟลเดอร์หากไม่มี หากมีก็เลือกลงได้
+        os.makedirs(path, exist_ok=True)
+        filepath = os.path.join(path, filename)
+        df.to_csv(filepath, mode="a", header=not os.path.exists(
+            filepath), index=False)
 
 def findModeKneeAngle(list: list):
     try:
@@ -396,3 +412,61 @@ def append_status_entry(user_image_url=None, similarity=None, rounds_count=None,
     with open(STATUS_JSON, "w", encoding="utf-8") as fh:
         json.dump(status, fh, ensure_ascii=False)
     return status 
+
+def squatPostureDisplay(
+        frame, init_landmarks, chosen_squat_posture_criteria_side, chosen_features,
+        shoulder_coord, hip_coord, knee_coord, ankle_coord, foot_coord, im_point_FloatHeel, 
+        HEAD_DEGREE_VALUE, hip_angle, KNEE_EXTEND_BEYOND_TOE_VALUE, ankle_angle, HEEL_FLOAT_VALUE,
+        COLORS, linetype, fontFace_ptf, fontScale_ptf, toggle
+):
+    frame_height, frame_width, _ = frame.shape
+    ratio_w, ratio_h = scaledTo(frame_width, frame_height)
+
+    try:
+        # draw line for the area of ​​the indicator showing the squat posture during squats
+        for start_idx, end_idx in chosen_squat_posture_criteria_side:
+            start_landmark = init_landmarks[start_idx]
+            end_landmark = init_landmarks[end_idx]
+            x1, y1 = int(
+                start_landmark.x * frame_width), int(start_landmark.y * frame_height)
+            x2, y2 = int(
+                end_landmark.x * frame_width), int(end_landmark.y * frame_height)
+            cv2.line(frame, (x1, y1), (x2, y2),
+                    COLORS['pink'], 1)
+
+        cv2.line(frame, foot_coord, im_point_FloatHeel,
+                COLORS['light_purple'], 1)
+
+        # # draw perpendicular line
+        for jointname in chosen_features:
+            if jointname in ['shoulder', 'hip', 'knee', 'ankle']:
+                landmark = init_landmarks[chosen_features[jointname]]
+                cx, cy = int(
+                    landmark.x * frame_width), int(landmark.y * frame_height)
+                cv2.line(frame, (cx, cy), (cx, cy-int(40*ratio_h)),
+                        COLORS['light_purple'], 2, lineType=linetype)
+
+        # draw dot joint
+        for jointname in chosen_features:
+            if jointname not in ['elbow', 'wrist']:
+                landmark = init_landmarks[chosen_features[jointname]]
+                cx, cy = int(
+                    landmark.x * frame_width), int(landmark.y * frame_height)
+                cv2.circle(frame, (cx, cy), 3,
+                        color = COLORS['magenta'], thickness=-3)
+
+        # text for indicators of squat posture during squats
+        cv2.putText(frame, str(HEAD_DEGREE_VALUE), (shoulder_coord[0]+int(10*ratio_w), shoulder_coord[1]),
+                    fontFace_ptf, fontScale_ptf, COLORS['yellow'], 2)
+        cv2.putText(frame, str(hip_angle), (hip_coord[0]+int(10*ratio_w), hip_coord[1]),
+                    fontFace_ptf, fontScale_ptf, COLORS['yellow'], 2)
+        cv2.putText(frame, str(KNEE_EXTEND_BEYOND_TOE_VALUE), (knee_coord[0]+int(-50*ratio_w), knee_coord[1]),
+                fontFace_ptf, fontScale_ptf, COLORS['yellow'], 2)
+        cv2.putText(frame, str(ankle_angle), (ankle_coord[0]+int(10*ratio_w), ankle_coord[1]),
+                fontFace_ptf, fontScale_ptf, COLORS['yellow'], 2)
+        cv2.putText(frame, str(HEEL_FLOAT_VALUE), (foot_coord[0]+int(-50*ratio_w), foot_coord[1]),
+                fontFace_ptf, fontScale_ptf, COLORS['yellow'], 2)
+        
+        return frame
+    except Exception as e: 
+        print(e)

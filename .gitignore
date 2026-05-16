@@ -6,9 +6,13 @@ index2.html
 keyframes_full.csv
 trainer_keyframes.csv
 <<<<<<< HEAD
+<<<<<<< HEAD
 __pycache__
 =======
+=======
+>>>>>>> khao
 
+# add by khao ------->
 __pycache__
 .venv
 rulebased.py
@@ -19,4 +23,10 @@ githelp.txt
 .venv
 static/outputvideos
 outvideo.avi
+<<<<<<< HEAD
 >>>>>>> origin/cordelia
+=======
+attemptCode
+app.py
+process.py
+>>>>>>> khao
