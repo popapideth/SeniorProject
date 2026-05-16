@@ -62,6 +62,13 @@ def _similarity_cb(val):
         if isinstance(val, dict):
             similarity = float(val.get("similarity", 0))
             user_landmarks_visibility = val.get("user_landmarks_visibility")
+<<<<<<<<< Temporary merge branch 1
+<<<<<<< HEAD
+            user_landmarks_Z = val.get("user_landmarks_z")
+=======
+            user_landmarks_z = val.get("user_landmarks_z")
+>>>>>>> origin/cordelia
+=========
             user_landmarks_z = val.get("user_landmarks_z")
             rep_number = val.get("rep_number")
             timestamp = val.get("timestamp", time.time())
@@ -155,6 +162,20 @@ def _similarity_cb(val):
         is_correct = thres_t and depth_matches and criteria_pass
         record = {
             "user_image": f"/static/keyframes/frame_{int(timestamp * 1000)}.jpg",
+<<<<<<<<< Temporary merge branch 1
+<<<<<<< HEAD
+            "similarity": sim_val,
+            "depth": depth_text,
+            "depth_value": depth_idx_normalized,
+            "target_txt": target_txt,
+            "target_depth": target_depth,
+            "user_vec": user_vec,
+            "Z": user_landmarks_Z,
+            "visibility": user_landmarks_visibility,
+=======
+>>>>>>> origin/cordelia
+=========
+>>>>>>>>> Temporary merge branch 2
             "timestamp": int(timestamp * 1000),
             "rep_number": current_rep_number,
             "target_depth": target_depth,
@@ -162,11 +183,21 @@ def _similarity_cb(val):
             "depth_value": depth_idx_normalized,
             "depth": depth_text,
             "depth_match": bool(depth_matches),
+<<<<<<<<< Temporary merge branch 1
+<<<<<<< HEAD
+            "sim_t": bool(thres_t),
+=======
+=========
+>>>>>>>>> Temporary merge branch 2
             "user_vec": user_vec,
             "similarity": sim_val,
             "sim_t": bool(thres_t),
             "visibility": user_landmarks_visibility,
             "z": user_landmarks_z,
+<<<<<<<<< Temporary merge branch 1
+>>>>>>> origin/cordelia
+=========
+>>>>>>>>> Temporary merge branch 2
             "user_criteria": user_criteria,
             "criteria_results": criteria_results,
             "isCorrect": bool(is_correct),
@@ -334,6 +365,32 @@ def start_session():
     except Exception as e:
         print(f"[ERROR] Failed to reset processor tracker: {e}")
 
+<<<<<<<<< Temporary merge branch 1
+<<<<<<< HEAD
+    global current_session_id
+    with app.app_context():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        exercise_name = "squat"
+        created_time = datetime.now().isoformat()
+
+        query  = ''' INSERT INTO public.sessions
+        (exercise_name,total_count,correct_count,incorrect_count,avg_Accuracy_percent,depth_correct,target_depth,created_time)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        RETURNING session_id'''
+        cursor.execute(query,(exercise_name,0,0,0,0,0,0,created_time))
+
+        current_session_id = cursor.fetchone()[0]#เก็บ session_id
+        conn.commit()
+        cursor.close()
+        conn.close()
+    print("New session created:", current_session_id)
+
+=======
+>>>>>>> origin/cordelia
+=========
+>>>>>>>>> Temporary merge branch 2
     return jsonify({
         'ok': True,
         'target_reps': reps,
@@ -744,6 +801,13 @@ def saveToDatabase(record):
 
             summary = calculate_summary()
             total_count = summary['total']
+<<<<<<<<< Temporary merge branch 1
+<<<<<<< HEAD
+            ## ประเภทความลึกที่เลือก ถูกตามที่กำหนดไว้ไหม
+=======
+>>>>>>> origin/cordelia
+=========
+>>>>>>>>> Temporary merge branch 2
             depth_correct = summary['depth_correct']
             correct_count = summary['correct']
             incorrect_count = summary['incorrect']

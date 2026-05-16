@@ -5,6 +5,15 @@ env/
 index2.html
 keyframes_full.csv
 trainer_keyframes.csv
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+__pycache__
+=======
+=======
+>>>>>>> khao
+>>>>>>> bd43ae173f948232e5e4dbdd82e0296ed1151ac8
 
 # add by khao ------->
 __pycache__
@@ -17,6 +26,16 @@ githelp.txt
 .venv
 static/outputvideos
 outvideo.avi
+<<<<<<< HEAD
 attemptCode
 app.py
 process.py
+=======
+<<<<<<< HEAD
+>>>>>>> origin/cordelia
+=======
+attemptCode
+app.py
+process.py
+>>>>>>> khao
+>>>>>>> bd43ae173f948232e5e4dbdd82e0296ed1151ac8
